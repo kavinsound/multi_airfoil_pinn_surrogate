@@ -1,0 +1,39 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      omega;
+}
+
+dimensions      [0 0 -1 0 0 0 0];
+internalField   uniform 1.0;
+
+boundaryField
+{
+    inlet
+    {
+        type            turbulentMixingLengthDissipationRateInlet;
+        mixingLength    0.07;            // 7% of characteristic length scale (e.g. 1m chord -> 0.07)
+        U               U;
+        value           uniform 1.0;     // Placeholder initialization value
+    }
+    "(outlet|upperWall|lowerWall)"
+    {
+        type            zeroGradient;
+    }
+    airfoil
+    {
+        type            omegaWallFunction; // Automatically switches handles for y+ < 1
+        value           uniform 1.0;
+    }
+
+    front
+    {
+        type            empty;
+    }
+    back
+    {
+        type            empty;
+    }
+}

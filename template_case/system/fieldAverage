@@ -1,0 +1,48 @@
+fieldAverage1
+    {
+        #include "../0/include/initialConditions"
+
+        U_mag           #eval{ scalar(string("$flowVelocity")) };
+
+        ttf             #eval{ 5 / $U_mag };
+        calcEndTime     #eval{ 10.0 * $ttf }; 
+        calcTimeStart   #eval{ 4.0 * $ttf };
+
+        type            fieldAverage;
+        libs            (fieldFunctionObjects);
+        writeControl    writeTime; // Saves the mean fields whenever regular fields are saved
+
+        // Reset the averaging at a specific time if you want to clear 
+        // the initial transient startup flow (highly recommended)
+        timeStart       calcTimeStart;
+        timeEnd         calcEndTime; 
+
+        fields
+        (
+            U
+            {
+                mean        on;
+                prime2Mean  off; // Set to 'on' only if you want Reynolds stresses (u'v')
+            }
+            p
+            {
+                mean        on;
+                prime2Mean  off;
+            }
+            k
+            {
+                mean        on;
+                prime2Mean  off;
+            }
+            omega
+            {
+                mean        on;
+                prime2Mean  off;
+            }
+            gamma
+            {
+                mean        on;
+                prime2Mean  off;
+            }
+        );
+    }
