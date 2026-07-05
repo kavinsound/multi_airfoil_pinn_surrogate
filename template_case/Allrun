@@ -1,0 +1,16 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+DICT="-decomposeParDict system/decomposeParDict.6"
+
+decomposePar $DICT > /dev/null 2>&1
+
+mpirun -np 6 pimpleFoam -parallel $DICT > /dev/null 2>&1
+
+reconstructPar > /dev/null 2>&1
+
+rm -rf proc* > /dev/null 2>&1
+
+#------------------------------------------------------------------------------

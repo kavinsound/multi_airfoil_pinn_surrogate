@@ -1,0 +1,63 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//- To be more comparable to v2406 bug-fix branch disable the
+//- near-wall distance fix (see v2412 release notes about 'Wall distance')
+//OptimisationSwitches
+//{
+//    useCombinedWallPatch    0;
+//}
+
+application     pimpleFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         25;
+
+deltaT          1;
+adjustTimeStep  yes;
+maxCo           0.5;
+maxLocalCo      2;
+
+writeControl    runTime;
+
+writeInterval   1;
+
+purgeWrite      10;
+
+writeFormat     binary;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+functions
+{
+    #include "forceCoeffs"
+}
+
+
+// ************************************************************************* //

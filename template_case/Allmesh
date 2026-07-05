@@ -1,0 +1,32 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+DICT="-decomposeParDict system/decomposeParDict.2"
+
+echo Running blockMesh...
+
+blockMesh > /dev/null 2>&1
+
+echo done
+
+surfaceFeatureExtract > /dev/null 2>&1
+
+decomposePar $DICT > /dev/null 2>&1 
+
+echo Running snappyHexMesh...
+
+mpirun -np 2 snappyHexMesh $DICT -overwrite -parallel > /dev/null 2>&1
+
+echo done
+
+echo cleaning up...
+reconstructParMesh -constant > /dev/null 2>&1
+
+extrudeMesh > /dev/null 2>&1
+
+rm -rf proc*
+
+checkMesh -allGeometry -allTopology > meshCheck.log
+echo done
