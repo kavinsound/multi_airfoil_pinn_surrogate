@@ -45,12 +45,20 @@ solvers
     }
 
 
-    "(gamma|ReThetat)"
+    "(U|k|omega|gamma)"
     {
         solver          PBiCGStMVM;
         preconditioner  DILU;
         tolerance       1e-8;
-        relTol          0;
+        relTol          0.1; // Allows quick inner loop steps
+    }
+
+    "(U|k|omega|gamma)Final"
+    {
+        solver          PBiCGStMVM;
+        preconditioner  DILU;
+        tolerance       1e-8;
+        relTol          0;   // Force absolute convergence on the final PIMPLE loop
     }
 
 }
@@ -58,7 +66,7 @@ solvers
 PIMPLE
 {
     momentumPredictor   yes; 
-    nOuterCorrectors    5;
+    nOuterCorrectors    3;
     nCorrectors         3;
     nNonOrthogonalCorrectors 0;
 }
@@ -69,8 +77,9 @@ relaxationFactors
     equations
     {
         U               0.7;
-        gamma           0.7;
-        ReThetat        0.7;
+        "k.*"          0.7;
+        "omega.*"      0.7;
+        "gamma.*"      0.7;
     }
 
 

@@ -19,7 +19,10 @@ simulationType  RAS;
 RAS
 {
     // For the 4-equation Langtry-Menter model:
-    RASModel        kOmegaSSTLM; 
+    //RASModel        kOmegaSSTLM; 
+    
+    // OR for the 3-equation model:
+    RASModel        kOmegaSSTGamma;
 
     turbulence      on;
     printCoeffs     on;
