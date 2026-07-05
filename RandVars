@@ -1,0 +1,39 @@
+import random
+
+def generate_airfoil_variables():
+  
+
+    return {
+
+        # Main airfoil
+        "main_chord": 1.0,
+
+        # Flap
+        "flap_chord_ratio": round(random.uniform(0.20, 0.40), 3),
+        "flap_gap": round(random.uniform(0.005, 0.050), 4),
+        "flap_overlap": round(random.uniform(-0.050, 0.050), 4),
+        "flap_deflection": round(random.uniform(0.0, 35.0), 2),
+        "flap_pivot": round(random.uniform(0.20, 0.35), 3),
+
+        # Slat
+        "slat_chord_ratio": round(random.uniform(0.10, 0.25), 3),
+        "slat_gap": round(random.uniform(0.005, 0.030), 4),
+        "slat_overlap": round(random.uniform(-0.030, 0.030), 4),
+        "slat_deflection": round(random.uniform(0.0, 25.0), 2),
+        "slat_pivot": round(random.uniform(0.20, 0.35), 3),
+
+        # Flow conditions
+        "angle_of_attack": round(random.uniform(-5.0, 20.0), 2),
+
+        # Reynolds Number
+        "reynolds_number": random.choice([
+            1e5,
+            2e5,
+            5e5,
+            1e6,
+            2e6,
+            5e6
+        ]),
+
+        "mach_number": round(random.uniform(0.05, 0.30), 3)
+    }
