@@ -1,0 +1,28 @@
+OUTLINE
+
+AIRFOIL SETUP GENERATION
+- Identify specific variables (gap length, chord ratios, attack angle, individual deflection)
+- Normalize to 1 m chord length
+- Identify Re range and attack angle range
+- Set up parameter sweep with various random curves (normal, log, bimodal)
+- Generate with Sobol generator, create multi stl setup
+
+
+TEMPLATE CASE AND AUTO MESHING
+- Set up basic RAS 3 term transitional (k, omega, gamma)
+- Dynamically set inputs based on Re (simulation time, initialConditions)
+- Calculate ForceCoeffs with center point based on attack angle
+- Create 3 separate surfaceFeatureExtractDict and snappyHexMeshDict for 1-3 airfoils
+- Write script to dynamically scale the addLayers inputs to maintain y+ < 1 to maintain accuracy for 1-3 airfoils
+- Make sure to test meshing failure rate over significant sample
+
+SIM DATA GENERATION
+- Test with small sample case (32 or 64)
+- Check data reading script and failure rate of cases
+- Create more robust case progress tracking, last one was buggy
+- Check how model trains before generating full dataset
+
+GI-PI-FNO
+- Implement physics loss terms and identify best data loss term instead of MSE
+    - Consider prebuilt loss terms if custom one is too difficult or hard to understand
+- Test with small sample, and test if overfitting is possible to ensure model has enough parameters to learn
