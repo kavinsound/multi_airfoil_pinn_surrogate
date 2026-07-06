@@ -16,28 +16,25 @@
 
 #SBATCH --time=12:00:00           # Total run time limit (HH:MM:SS)
 
-#SBATCH --output=slurm.%N.%j.out  # STDOUT output file
+#SBATCH --output=logs/download.%j.out  # STDOUT output file
 
-#SBATCH --error=slurm.%N.%j.err   # STDERR output file (optional)
+#SBATCH --error=logs/download.%j.err   # STDERR output file (optional)
 
-cd $HOME/openfoam
-
-source $HOME/.bashrc 
+source $HOME/.bashrc
 
 mamba deactivate
 
-wget https://dl.openfoam.com/source/v2512/OpenFOAM-v2512.tgz
-tar -xzf OpenFOAM-v2512.tgz
+mkdir -p $HOME/openfoam
+cd $HOME/openfoam
 
-wget https://dl.openfoam.com/source/v2512/ThirdParty-v2512.tgz
-tar -xzf ThirdParty-v2512.tgz
+wget https://dl.openfoam.com/source/v2512/OpenFOAM-v2512.tgz
+tar -xf OpenFOAM-v2512.tgz
+
+wget https://dl.openfoam.com/source/v2512/ThirdParty-v2512.tar.gz
+tar -xf ThirdParty-v2512.tar.gz
 
 source $HOME/openfoam/OpenFOAM-v2512/etc/bashrc
-
 cd $HOME/openfoam/OpenFOAM-v2512
 
-./Allwmake -j 8
+./Allwmake -j -k -l -s
 
-echo "source $HOME/openfoam/OpenFOAM-v2512/etc/bashrc" >> $HOME/.bashrc
-
-rm -rf *.tar *.tgz
