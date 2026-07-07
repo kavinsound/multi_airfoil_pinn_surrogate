@@ -1,0 +1,126 @@
+import json
+import math
+import os
+from dataclasses import dataclass, asdict
+import numpy as np 
+from scipy.stats import qmc 
+
+
+@dataclass
+class AirfoilConfig:
+    n_airfoils: int
+    Re: float
+    alpha_global: float
+    chords: list
+    deflections: list
+    gaps: list          
+    polar_angles: list
+
+
+class SobolAirfoilGenerator:
+    # dimenstions used per extra airfoil (chord, deflection, gap, polar_angle)
+    DIMS_PER_EXTRA_AIRFOIL = 4
+    MAX_EXTRA_AIRFOILS = 2  # up to 3 airfoils total
+    BASE_DIMS = 5  # n_airfoils, Re, alpha_global, deflection
+
+
+    def __init__(self, state_file="airfoil_state.json", seed=42):
+        self.state_file = state_file
+        self.seed = seed
+        self.dim = self.BASE_DIMS + self.MAX_EXTRA_AIRFOILS * self.DIMS_PER_EXTRA_AIRFOIL
+
+        # scrambled + seeded Sobol sequence
+        self.sampler = qmc.Sobol(d=self.dim, scramble=True, seed=self.seed)
+
+        self.index = 0
+        self.configs = []  # full history of generated configs
+        self._load_state()
+        if self.index > 0:
+            self.sampler.fast_forward(self.index)
+
+    def _load_state(self):
+         # checks if generated points before
+        if os.path.exists(self.state_file):
+            with open(self.state_file, "r") as f:
+                state = json.load(f)
+            self.index = state.get("index", 0) # how many points generated so far
+            self.configs = state.get("configs", []) # every config generated so far
+
+    def _save_state(self):
+        # overwrite the file with current progress
+        with open(self.state_file, "w") as f:
+            json.dump({"index": self.index, "configs": self.configs}, f, indent=4)
+
+    def _next_sobol(self):
+        # one new point, advancing the sequence by one step.
+        sample = self.sampler.random(1)[0]
+        self.index += 1
+        return sample
+
+    # mapping functions
+    def _log_scale_Re(self, u):
+        # 1e4 to 1e7 typical aero range
+        return 10 ** (4 + u * 3)
+
+    def _random_airfoil_count(self, u):
+        return 1 + int(u * 3)  # 1-3
+
+    def generate(self):
+        u = self._next_sobol()
+
+        n_airfoils = self._random_airfoil_count(u[0])
+        Re = self._log_scale_Re(u[1])
+        alpha_global = -10 + 20 * u[2]  # -10 to +10 degrees
+
+        chords = [1.0]
+        deflections = [(u[3] - 0.5) * 10]
+        polar_angles = [u[4] * 2 * math.pi]
+        gaps = []
+
+        for i in range(1, n_airfoils):
+            # each extra airfoil gets its own dedicated slice of dims, so parameters never overlap with each other
+            base = self.BASE_DIMS + (i - 1) * self.DIMS_PER_EXTRA_AIRFOIL
+            u_chord, u_defl, u_gap, u_angle = u[base:base + 4]
+            
+            # chord length as a fraction of the main airfoil's chord range [0.3, 1.0]
+            chords.append(0.3 + 0.7 * u_chord)
+            
+            #deflection for this airfoil, in degrees, range [-7.5, +7.5]
+            deflections.append((u_defl - 0.5) * 15)
+
+            # gap as polar coords
+            gap_r = 0.05 + 0.3 * u_gap
+            gap_theta = u_angle * 2 * math.pi
+            # gap as vector
+            gap_vec = [gap_r * math.cos(gap_theta), gap_r * math.sin(gap_theta)]
+            gaps.append(gap_vec)
+
+            
+            
+            
+
+        cfg = AirfoilConfig(
+            n_airfoils=n_airfoils,
+            Re=Re,
+            alpha_global=alpha_global,
+            chords=chords,
+            deflections=deflections,
+            gaps=gaps,
+            polar_angles=polar_angles,
+
+        )
+
+        self.configs.append(asdict(cfg))
+        self._save_state()
+        return cfg
+
+    def save_config(self, cfg: AirfoilConfig, filename="airfoil_config.json"):
+        with open(filename, "w") as f:
+            json.dump(asdict(cfg), f, indent=4)
+
+
+if __name__ == "__main__":
+    gen = SobolAirfoilGenerator(state_file="airfoil_state.json", seed=42)
+    for _ in range(10):
+        cfg = gen.generate()
+        print(cfg)
