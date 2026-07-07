@@ -3,8 +3,9 @@ import math
 import os
 from dataclasses import dataclass, asdict
 import numpy as np 
-from scipy.stats import qmc 
-
+from scipy.stats import qmc
+import glob
+from pathlib import Path
 
 @dataclass
 class AirfoilConfig:
@@ -15,47 +16,51 @@ class AirfoilConfig:
     chords: list         # Fixed length 3
     deflections: list    # Fixed length 2 (for extra foils)
     gaps: list           # Fixed length 2 vectors [dx, dy] (relative to previous foil TE)
+    reflection: bool     # Downward facing/upward facing profile
 
 
 class SobolAirfoilGenerator:
     # Dimensions used per extra airfoil (chord, deflection, gap_r, gap_theta)
     DIMS_PER_EXTRA_AIRFOIL = 4
     MAX_EXTRA_AIRFOILS = 2  # up to 3 airfoils total
-    # Dimensions for base state: n_airfoils, Re, alpha_global
-    BASE_DIMS = 3  
+    # Dimensions for base state: n_airfoils, Re, alpha_global, ids 1-3, and reflection
+    BASE_DIMS = 7  
 
     def __init__(self, state_file="airfoil_state.json", seed=42):
         self.state_file = state_file
         self.seed = seed
-        self.dim = self.BASE_DIMS + self.MAX_EXTRA_AIRFOILS * self.DIMS_PER_EXTRA_AIRFOIL
+        self.dim = self.BASE_DIMS + self.MAX_EXTRA_AIRFOILS * self.DIMS_PER_EXTRA_AIRFOIL    #total number of required numbers generated
 
-        # Scrambled=False as per your original script
+        self.foil_list = 0
+
+        list_path = Path("../cleaned_foils")
+
+        self.foil_list = len(list_path.glob("*.dat"))
+        
         self.sampler = qmc.Sobol(d=self.dim, scramble=False, seed=self.seed)
 
         self.index = 0
-        self.configs = []  # Full history of generated configs
         self._load_state()
         if self.index > 0:
-            self.sampler.fast_forward(self.index)
+            self.sampler.fast_forward(self.index)    #continue where left off
 
     def _load_state(self):
         if os.path.exists(self.state_file):
             with open(self.state_file, "r") as f:
                 state = json.load(f)
-            self.index = state.get("index", 0)
-            self.configs = state.get("configs", [])
+            self.index = state.get("index", 0)    #read save file for current state
 
     def _save_state(self):
         with open(self.state_file, "w") as f:
-            json.dump({"index": self.index, "configs": self.configs}, f, indent=4)
+            json.dump({"index": self.index}, f, indent=4)   #save current state
 
     def _next_sobol(self):
-        sample = self.sampler.random(1)[0]
+        sample = self.sampler.random(1)[0]       #generate new set
         self.index += 1
         return sample
 
     def generate(self):
-        u = self._next_sobol()
+        u = self._next_sobol()   #new set of numbers
 
         # 1. Base Parameters
         n = 1 + int(u[0] * 3)  # 1 to 3 airfoils
@@ -63,17 +68,25 @@ class SobolAirfoilGenerator:
         # Reynolds number: 10^4 (10,000) to 10^6 (1,000,000 - turbulent but incompressible)
         Re = 10 ** (4 + u[1] * 2) 
         
-        # Global Angle of Attack in RADIANS (e.g., -10 to +10 degrees converted to rad)
-        alpha_global = math.radians(-10 + 20 * u[2])
+        # Global Angle of Attack in RADIANS (e.g., -45 to +10 degrees converted to rad)
+        alpha_global = math.radians(45 * u[2])
 
         # 2. Initialize fixed-size lists (padding out to max capacities)
         chords = [1.0, 0.0, 0.0]
         deflections = [0.0, 0.0]  # Deflection of foil 2, deflection of foil 3
         gaps = [[0.0, 0.0], [0.0, 0.0]]  # Gap vector 1->2, Gap vector 2->3
 
-        # --- INSERT YOUR IDS GENERATION LOGIC HERE ---
-        # Example placeholder matching your request for a list of 3
-        ids = ["base_id", "none", "none"] 
+        
+        #Generate ids corresponding to common airfoil data
+        ids = [0, 0, 0]
+
+        u_id1, u_id2, u_id3 = u[3:6]
+        ids[0] = int(self.foil_list * u_id1)
+        ids[1] = int(self.foil_list * u_id2)
+        ids[2] = int(self.foil_list * u_id3)
+
+        reflection = bool(round(u[6]))
+
         # ---------------------------------------------
 
         # 3. Extract Sobol spaces sequentially for the extra airfoils
@@ -100,7 +113,8 @@ class SobolAirfoilGenerator:
             alpha_global=alpha_global,
             chords=chords,
             deflections=deflections,
-            gaps=gaps
+            gaps=gaps,
+            reflection=reflection
         )
 
         self.configs.append(asdict(cfg))
