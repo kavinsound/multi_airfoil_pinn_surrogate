@@ -1,14 +1,10 @@
 from pathlib import Path
 import glob
 import numpy as np
-import os
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.affinity import rotate, scale
 import trimesh
-import sys
-import math
 import matplotlib.pyplot as plt
-from shapely import make_valid
 
 
 #                length of id array is number of airfoils (1-3)
