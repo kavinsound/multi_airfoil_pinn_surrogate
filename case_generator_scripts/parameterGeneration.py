@@ -3,9 +3,10 @@ import math
 import os
 from dataclasses import dataclass, asdict
 import numpy as np 
-from scipy.stats import qmc
+from scipy.stats import qmc, norm
 import glob
 from pathlib import Path
+
 
 @dataclass
 class AirfoilConfig:
@@ -35,7 +36,7 @@ class SobolAirfoilGenerator:
 
         list_path = Path("../cleaned_foils")
 
-        self.foil_list = len(list_path.glob("*.dat"))
+        self.foil_list = len(glob.glob(os.path.join(list_path, "*.dat")))
         
         self.sampler = qmc.Sobol(d=self.dim, scramble=False, seed=self.seed)
 
@@ -88,22 +89,45 @@ class SobolAirfoilGenerator:
         reflection = bool(round(u[6]))
 
         # ---------------------------------------------
-
+        if n == 3: #this is kinda bad code
         # 3. Extract Sobol spaces sequentially for the extra airfoils
-        for i in range(1, 3):  # i = 1 (second foil), i = 2 (third foil)
-            base_idx = self.BASE_DIMS + (i - 1) * self.DIMS_PER_EXTRA_AIRFOIL
-            u_chord, u_defl, u_gap_r, u_gap_theta = u[base_idx:base_idx + 4]
-            
-            # Populate chord parameters
-            chords[i] = 0.3 + 0.7 * u_chord
-            
-            # Deflection angles for extra foils (in radians, mapping a range like -15 to +15 deg)
-            deflections[i-1] = math.radians(-15 + 30 * u_defl)
+            for i in range(1, 3):  # i = 1 (second foil), i = 2 (third foil)
+                base_idx = self.BASE_DIMS + (i - 1) * self.DIMS_PER_EXTRA_AIRFOIL
+                u_chord, u_defl, u_gap_r, u_gap_theta = u[base_idx:base_idx + 4]
+                
 
-            # Polar gap translation to Cartesian vectors [dx, dy]
-            gap_r = 0.05 + 0.3 * u_gap_r
-            gap_theta = u_gap_theta * 2 * math.math.pi
-            gaps[i-1] = [gap_r * math.cos(gap_theta), gap_r * math.sin(gap_theta)]
+                standard_normal_sample = norm.ppf(u_chord)
+                # Populate chord parameters
+                chord_distr = [
+                    [0.25, 0.04, 0.18, 0.38],
+                    [0.15, 0.02, 0.1, 0.22]
+                ]
+
+            
+                generated_chord = chord_distr[i-1][0] + standard_normal_sample * chord_distr[i-1][1]  #normal distr
+                chords[i] = float(np.clip(generated_chord, chord_distr[i-1][2], chord_distr[i-1][3])) #clip between min/max
+                
+                # Deflection angles for extra foils (in radians, mapping a range like -15 to +15 deg)
+                deflections[i-1] = math.radians(-15 + 30 * u_defl)
+
+                # Polar gap translation to Cartesian vectors [dx, dy]
+                gap_r_percent = 0.01 + 0.02 * u_gap_r
+                gap_r = chords[i-1] * gap_r_percent    #gap behavior more based on percent of length than raw distance
+                gap_theta = np.degrees(-165 + 330 * u_gap_theta)  #includes overlap region
+                gaps[i-1] = [gap_r * math.cos(gap_theta), gap_r * math.sin(gap_theta)]
+        else: #n = 2, different scaling
+            u_chord, u_defl, u_gap_r, u_gap_theta = u[self.BASE_DIMS:self.BASE_DIMS + 4]
+            standard_normal_sample = norm.ppf(u_chord)
+
+            generated_chord = 0.3 + standard_normal_sample * 0.04
+            chords[1] = float(np.clip(generated_chord, 0.2, 0.4))
+            deflections[0] = math.radians(-15 + 30 * u_defl)
+            gap_r_percent = 0.01 + 0.02 * u_gap_r
+            gap_r = chords[0] * gap_r_percent
+            gap_theta = 2.61799 + 1.04719 * u_gap_theta
+            gaps[0] = [gap_r * math.cos(gap_theta), gap_r * math.sin(gap_theta)]
+
+
 
         # 4. Construct complete dataclass object
         cfg = AirfoilConfig(
@@ -117,18 +141,15 @@ class SobolAirfoilGenerator:
             reflection=reflection
         )
 
-        self.configs.append(asdict(cfg))
+        
         self._save_state()
         return cfg
 
-    def save_config(self, cfg: AirfoilConfig, filename="airfoil_config.json"):
-        with open(filename, "w") as f:
-            json.dump(asdict(cfg), f, indent=4)
 
 
 if __name__ == "__main__":
     gen = SobolAirfoilGenerator(state_file="airfoil_state.json", seed=42)
-    for _ in range(5):
+    for _ in range(1):
         cfg = gen.generate()
         print(f"Active foils (n): {cfg.n}")
         print(f"Alpha (rad): {cfg.alpha_global:.4f} | Re: {cfg.Re:.1f}")
