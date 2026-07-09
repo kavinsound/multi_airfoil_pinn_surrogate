@@ -5,16 +5,22 @@ from shapely.geometry import Polygon, MultiPolygon
 from shapely.affinity import rotate, scale
 import trimesh
 import matplotlib.pyplot as plt
+from scipy.special import ndtri
+
+
+from parameterGeneration import SobolAirfoilGenerator, AirfoilConfig
 
 
 #                length of id array is number of airfoils (1-3)
 def mesh_polygon(
-    ids, lengths, deflection_angles, gap_vectors, angle_of_attack, reflection
+    config
 ):
-    n = len(ids)
-
+    n, ids, angle_of_attack, lengths, deflection_angles, gap_vectors, reflection = config.n, config.ids, config.alpha_global, config.chords, config.deflections, config.gaps, config.reflection
+    gap_vectors = np.array(gap_vectors).astype(float)
+    reflection = 0
+    angle_of_attack = 0  #REMOVE LATER
     file_list = dat_list()  # list of foils
-
+    # print(ids)
     if n == 1:  # only one airfoil is simple
         foil_coords = np.loadtxt(file_list[ids[0]])
         shape = Polygon(foil_coords)
@@ -28,11 +34,11 @@ def mesh_polygon(
                 shape, xfact=1, yfact=-1, origin=(0, 0)
             )  # reflect for downward
 
-        return shape
+        return [shape]
 
     else:
         shapes = []  # list to hold each polygon to combine after
-        end_point = [1, 0]  # end of each polygon as we add to list
+        end_point = np.array([1, 0]).astype(float)  # end of each polygon as we add to list
         for i in range(n):
             foil_coords = np.loadtxt(file_list[ids[i]])
 
@@ -40,28 +46,20 @@ def mesh_polygon(
                 foil_coords += (
                     end_point + gap_vectors[i - 1]
                 )  # after first airfoil, calculate starting point by adding the vectors to origin
-                end_point += gap_vectors[i - 1] + [
+                end_point += gap_vectors[i - 1] + np.array([
                     lengths[i],
                     0,
-                ]  # recalculate new endpoint of new part
+                ]).astype(float)  # recalculate new endpoint of new part
 
             shape = Polygon(foil_coords)
 
-            centroid = end_point - [
-                3 * lengths[i] / 4,
-                0,
-            ]  # calculate absolute rotation center with new endpoint
-            shape = rotate(
-                shape, angle=-1 * np.rad2deg(deflection_angles[i]), origin=centroid
-            )  # apply individual deflection angle
+            leading =np.array(end_point) - np.array([lengths[i], 0])  # calculate absolute rotation center with new endpoint
 
-            start = end_point - [
-                lengths[i],
-                0,
-            ]  # find tip of airfoil to apply scale without moving it around
-            shape = scale(
-                shape, xfact=lengths[i], yfact=lengths[i], origin=start
-            )  # apply new length
+            # if i != 0:
+            #     shape = rotate(shape, angle=-1 * np.rad2deg(deflection_angles[i-1]), origin=tuple(leading))  # apply individual deflection angle
+
+              # find tip of airfoil to apply scale without moving it around
+            shape = scale(shape, xfact=lengths[i], yfact=lengths[i], origin=tuple(leading))  # apply new length
 
             shapes.append(shape)  # append polygon to list
 
@@ -81,18 +79,14 @@ def mesh_polygon(
 
         scale_ratio = 1 / total_chord
 
-        multi_shape = scale(
-            multi_shape, xfact=scale_ratio, yfact=scale_ratio, origin=(0, 0)
-        )  # normalize chord length to 1
+        multi_shape = scale(multi_shape, xfact=scale_ratio, yfact=scale_ratio, origin=(0, 0))  # normalize chord length to 1
 
-        multi_shape = rotate(
-            multi_shape, angle=-1 * np.rad2deg(angle_of_attack), origin=(0.25, 0)
-        )
+        multi_shape = rotate(multi_shape, angle=-1 * np.rad2deg(angle_of_attack), origin=(0.25, 0))
 
         if reflection:
             multi_shape = scale(multi_shape, xfact=1, yfact=-1, origin=(0, 0))
 
-        return multi_shape
+        return list(multi_shape.geoms)
 
 
 def dat_list():
@@ -100,3 +94,74 @@ def dat_list():
 
     unsorted = folder_path.glob("*.dat")
     return sorted(unsorted)
+
+class InteractiveVisualizer:
+    def __init__(self, generator):
+        self.generator = generator
+        
+        # Setup the plot canvas
+        self.fig, self.ax = plt.subplots(figsize=(3, 3))
+        self.fig.canvas.manager.set_window_title("Airfoil Polygon Inspector")
+        
+        # Bind the key press controller event
+        self.fig.canvas.mpl_connect("key_press_event", self.on_key)
+        
+        # Plot the first initial configuration state automatically
+        self.draw_next_configuration()
+
+    def draw_next_configuration(self):
+        # 1. Generate fresh parameters
+        cfg = self.generator.generate()
+        
+        print(f"Active foils (n): {cfg.n}")
+        print(f"Alpha (rad): {cfg.alpha_global:.4f} | Re: {cfg.Re:.1f}")
+        print(f"Chords: {cfg.chords}")
+        print(f"Deflections: {cfg.deflections}")
+        print(f"Gaps: {cfg.gaps}\n" + "-"*40)
+
+        # 2. Clear out the previous frame completely
+        self.ax.clear()
+        
+        # 3. Generate your coordinate arrays using your custom geometry builder
+        polygons = mesh_polygon(cfg)
+        
+        # 4. Render each polygon loop layer to the axis
+        for idx, poly in enumerate(polygons):
+            poly_arr = np.array(poly.exterior.coords)
+            # Separate out X and Y columns
+            x, y = poly_arr[:, 0], poly_arr[:, 1]
+            
+            # Draw line and shaded fill region
+            self.ax.plot(x, y, label=f"Element {idx+1}", linewidth=1.5)
+            self.ax.fill(x, y, alpha=0.2)
+            
+        # 5. Presentation formatting
+        self.ax.set_title(f"Config #{self.generator.index} (n={cfg.n}) | PRESS [SPACE] FOR NEXT", fontsize=11, fontweight="bold")
+        self.ax.set_xlabel("X (m)")
+        self.ax.set_ylabel("Y (m)")
+        self.ax.grid(True, linestyle="--", alpha=0.5)
+        self.ax.legend(loc="upper right")
+        
+        # CRITICAL: Keep aspect ratio 1:1 so angles and gaps aren't stretched/distorted
+        self.ax.set_aspect("equal", adjustable="box")
+        
+        # Dynamically fit margins cleanly around the elements
+        self.ax.autoscale_view()
+        
+        # Flush the updates onto the visible window GUI
+        self.fig.canvas.draw()
+
+    def on_key(self, event):
+        # Listen explicitly for spacebar interactions
+        if event.key == " ":
+            self.draw_next_configuration()
+        # Allow structural escape commands
+        elif event.key == "escape":
+            plt.close(self.fig)
+
+if __name__ == "__main__":
+    gen = SobolAirfoilGenerator(state_file="airfoil_state.json", seed=42)
+    
+    # Fire up the interactive visual inspection application
+    visualizer = InteractiveVisualizer(gen)
+    plt.show()
