@@ -108,12 +108,18 @@ class SobolAirfoilGenerator:
                 chords[i] = float(np.clip(generated_chord, chord_distr[i-1][2], chord_distr[i-1][3])) #clip between min/max
                 
                 # Deflection angles for extra foils (in radians, mapping a range like -15 to +15 deg)
-                deflections[i-1] = math.radians(-20 + 20 * u_defl)
+                deflections[i-1] = math.radians(20 * u_defl)
 
                 # Polar gap translation to Cartesian vectors [dx, dy]
-                gap_r_percent = 0.015 + 0.02 * u_gap_r
-                gap_r = chords[i-1] * gap_r_percent    #gap behavior more based on percent of length than raw distance
-                gap_theta = np.radians(-165 + 165 * u_gap_theta)  #includes overlap region
+                gap_r_percent = 0.01
+                gap_r = chords[i-1]
+                if i == 1:
+                    gap_r_percent = 0.015 + 0.02 * u_gap_r
+                    gap_r = chords[i-1] * gap_r_percent    #gap behavior more based on percent of length than raw distance
+                elif i == 2:
+                    gap_r_percent = 0.03 + 0.02 * u_gap_r
+                    gap_r = chords[i-1] * gap_r_percent
+                gap_theta = np.radians(-120 + 120 * u_gap_theta)  #includes overlap region
                 gaps[i-1] = [gap_r * math.cos(gap_theta), gap_r * math.sin(gap_theta)]
         else: #n = 2, different scaling
             u_chord, u_defl, u_gap_r, u_gap_theta = u[self.BASE_DIMS:self.BASE_DIMS + 4]
@@ -121,10 +127,10 @@ class SobolAirfoilGenerator:
 
             generated_chord = 0.3 + standard_normal_sample * 0.04
             chords[1] = float(np.clip(generated_chord, 0.2, 0.4))
-            deflections[0] = math.radians(-20 + 20 * u_defl)
+            deflections[0] = math.radians(20 * u_defl)
             gap_r_percent = 0.015 + 0.02 * u_gap_r
             gap_r = chords[0] * gap_r_percent
-            gap_theta = np.radians(-165 + 165 * u_gap_theta)
+            gap_theta = np.radians(-120 + 120 * u_gap_theta)
             gaps[0] = [gap_r * math.cos(gap_theta), gap_r * math.sin(gap_theta)]
 
 

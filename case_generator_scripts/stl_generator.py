@@ -39,29 +39,29 @@ def mesh_polygon(
     else:
         shapes = []  # list to hold each polygon to combine after
         end_point = np.array([1, 0]).astype(float)  # end of each polygon as we add to list
+        leading = np.array([0, 0])
         for i in range(n):
             foil_coords = np.loadtxt(file_list[ids[i]])
-
+            
             if i != 0:
                 foil_coords += (
                     end_point + gap_vectors[i - 1]
                 )  # after first airfoil, calculate starting point by adding the vectors to origin
-                end_point += gap_vectors[i - 1] + np.array([
-                    lengths[i],
-                    0,
-                ]).astype(float)  # recalculate new endpoint of new part
-
+                leading = end_point + gap_vectors[i-1] #start of airfoil
+                end_point = leading + [lengths[i]*np.cos(deflection_angles[i-1]), -1 * lengths[i]*np.sin(deflection_angles[i-1])]
+                # calculate new endpoint location to use in next loop
             shape = Polygon(foil_coords)
 
-            leading =np.array(end_point) - np.array([lengths[i], 0])  # calculate absolute rotation center with new endpoint
+              # calculate absolute rotation center with new endpoint
 
-            # if i != 0:
-            #     shape = rotate(shape, angle=-1 * np.rad2deg(deflection_angles[i-1]), origin=tuple(leading))  # apply individual deflection angle
+            if i != 0:
+                shape = rotate(shape, angle=-1 * np.rad2deg(deflection_angles[i-1]), origin=tuple(leading))  # apply individual deflection angle
 
               # find tip of airfoil to apply scale without moving it around
             shape = scale(shape, xfact=lengths[i], yfact=lengths[i], origin=tuple(leading))  # apply new length
 
             shapes.append(shape)  # append polygon to list
+
 
         multi_shape = MultiPolygon(shapes)
 
