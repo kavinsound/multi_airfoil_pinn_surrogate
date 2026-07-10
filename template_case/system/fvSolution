@@ -63,12 +63,16 @@ solvers
 
 }
 
-PIMPLE
+SIMPLE
 {
-    momentumPredictor   yes; 
-    nOuterCorrectors    3;
-    nCorrectors         3;
     nNonOrthogonalCorrectors 0;
+    residualControl
+    {
+        p               1e-5;
+        U               1e-5;
+        k               1e-5;
+        omega           1e-5;
+    }
 }
 
 

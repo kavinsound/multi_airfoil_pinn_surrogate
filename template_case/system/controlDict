@@ -14,54 +14,26 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "../0/include/initialConditions"
-
-U_mag           #eval{ scalar(string("$flowVelocity")) };
-
-ttf             #eval{ 5 / $U_mag };
-calcEndTime     #eval{ 10.0 * $ttf }; 
-calcTimeStart   #eval{ 4.0 * $ttf };
-
-//- To be more comparable to v2406 bug-fix branch disable the
-//- near-wall distance fix (see v2412 release notes about 'Wall distance')
-//OptimisationSwitches
-//{
-//    useCombinedWallPatch    0;
-//}
-
-application     pimpleFoam;
+application     simpleFoam;
 
 startFrom       startTime;
-
 startTime       0;
 
 stopAt          endTime;
-
-endTime         $calcEndTime;
+endTime         10000;
 
 deltaT          1;
-adjustTimeStep  yes;
-maxCo           0.5;
-maxLocalCo      2;
+// steady-state does not use adjustTimeStep or Courant numbers
+// adjustTimeStep no; 
 
 writeControl    runTime;
+writeInterval   500; // Write every 500 iterations to save disk space
 
-writeInterval   1;
-
-purgeWrite      10;
-
+purgeWrite      2;   // Keeps only the latest 2 write folders
 writeFormat     binary;
-
 writePrecision  6;
 
-writeCompression off;
-
-timeFormat      general;
-
-timePrecision   6;
-
-runTimeModifiable true;
-
+runTimeModifiable yes;
 functions
 {
     #include "forceCoeffs"
