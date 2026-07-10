@@ -95,7 +95,7 @@ def dat_list():
     unsorted = folder_path.glob("*.dat")
     return sorted(unsorted)
 
-class InteractiveVisualizer:
+class InteractiveVisualizer:  #Graph the generated setups to visually confirm quality
     def __init__(self, generator):
         self.generator = generator
         
@@ -158,6 +158,40 @@ class InteractiveVisualizer:
         # Allow structural escape commands
         elif event.key == "escape":
             plt.close(self.fig)
+
+def extrude_stls(polygon_list):
+    n = len(polygon_list)
+    stl_list = []
+    for i in range(n):
+        polygon_mesh = trimesh.creation.extrude_polygon(polygon_list[i], height=1.0)
+        stl_list.append(polygon_mesh)
+    return stl_list
+
+def y_plus_calculator(config):
+    re = config.Re
+    nu = 1.5e-5
+    layers = []
+    for i in range(config.n):
+        chord = config.chords[i]
+
+        U = (re * nu) / chord
+        
+        # 2. Calculate Skin Friction Coefficient (Cf)
+        # Using the 1/5th power law correlation
+        cf = 0.058 * (re**-0.2)
+        
+        # 3. Calculate friction velocity (u_tau)
+        # u_tau = U * sqrt(Cf / 2)
+        u_tau = U * (cf / 2)**0.5
+        
+        # 4. First cell height
+        first_layer = (0.8 * nu) / u_tau
+        layers.append(first_layer)
+    
+    return layers
+
+
+
 
 if __name__ == "__main__":
     gen = SobolAirfoilGenerator(state_file="airfoil_state.json", seed=42)
