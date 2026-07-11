@@ -19,6 +19,8 @@ castellatedMesh true;
 snap            true;
 addLayers       true;
 
+#include    "snappyIncludes/levels"
+
 
 // Geometry. Definition of all surfaces. All surfaces are of class
 // searchableSurface.
@@ -28,10 +30,16 @@ addLayers       true;
 // - to 'snap' the mesh boundary to the surface
 geometry
 {
-    airfoil_mesh.stl
+    airfoil_1.stl
     {
         type triSurfaceMesh;
-        name airfoil;
+        name airfoil1;
+    }
+
+    airfoil_2.stl
+    {
+        type triSurfaceMesh;
+        name airfoil2;
     }
 
     wake_box
@@ -91,8 +99,13 @@ castellatedMeshControls
     features
     (
         {
-            file "airfoil_mesh.eMesh";
-            level 1;
+            file "airfoil_1.eMesh";
+            level $eMeshLevel;
+        }
+
+        {
+            file "airfoil_2.eMesh";
+            level $eMeshLevel;
         }
     );
 
@@ -109,10 +122,23 @@ castellatedMeshControls
 
     refinementSurfaces
     {
-        airfoil
+        airfoil1
         {
             // Surface-wise min and max refinement level
-            level (1 1);
+            level $surfaceLevel;
+
+            // Optional specification of patch type (default is wall). No
+            // constraint types (cyclic, symmetry) etc. are allowed.
+            patchInfo
+            {
+                type wall;
+            }
+        }
+
+        airfoil2
+        {
+            // Surface-wise min and max refinement level
+            level $surfaceLevel;
 
             // Optional specification of patch type (default is wall). No
             // constraint types (cyclic, symmetry) etc. are allowed.
@@ -145,7 +171,7 @@ castellatedMeshControls
         wake_box
         {
             mode    inside;
-            levels  ((1 1));
+            levels  $boxLevel;
         }
     }
 
@@ -277,15 +303,24 @@ addLayersControls
 {
     // Are the thickness parameters below relative to the undistorted
     // size of the refined cell outside layer (true) or absolute sizes (false).
-    relativeSizes true;
+    relativeSizes false;
 
     // Per final patch (so not geometry!) the layer information
     layers
     {
-        "airfoil*"
+        "airfoil1*"
         {
-            nSurfaceLayers 3;
+            nSurfaceLayers $surfaceLayers;
+            firstLayerThickness $airfoil_1_firstLayer;
         }
+
+        "airfoil2*"
+        {
+            nSurfaceLayers $surfaceLayers;
+            firstLayerThickness $airfoil_2_firstLayer;
+        }
+
+        
     }
 
     // Expansion factor for layer mesh
@@ -295,7 +330,6 @@ addLayersControls
     // is the thickness of the layer furthest away from the wall.
     // Relative to undistorted size of cell outside layer.
     // See relativeSizes parameter.
-    finalLayerThickness 0.4;
 
     // Minimum thickness of cell layer. If for any reason layer
     // cannot be above minThickness do not add layer.

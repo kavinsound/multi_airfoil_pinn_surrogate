@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import glob
 import numpy as np
@@ -6,9 +7,9 @@ from shapely.affinity import rotate, scale
 import trimesh
 import matplotlib.pyplot as plt
 from scipy.special import ndtri
-
-
-from parameterGeneration import SobolAirfoilGenerator, AirfoilConfig
+import json
+from dataclasses import asdict
+from parameterGeneration import SobolAirfoilGenerator
 
 
 #                length of id array is number of airfoils (1-3)
@@ -17,8 +18,8 @@ def mesh_polygon(
 ):
     n, ids, angle_of_attack, lengths, deflection_angles, gap_vectors, reflection = config.n, config.ids, config.alpha_global, config.chords, config.deflections, config.gaps, config.reflection
     gap_vectors = np.array(gap_vectors).astype(float)
-    reflection = 0
-    angle_of_attack = 0  #REMOVE LATER
+    # reflection = 0
+    # angle_of_attack = 0  #REMOVE LATER
     file_list = dat_list()  # list of foils
     # print(ids)
     if n == 1:  # only one airfoil is simple
@@ -197,5 +198,24 @@ if __name__ == "__main__":
     gen = SobolAirfoilGenerator(state_file="airfoil_state.json", seed=42)
     
     # Fire up the interactive visual inspection application
-    visualizer = InteractiveVisualizer(gen)
-    plt.show()
+    # visualizer = InteractiveVisualizer(gen)
+    # plt.show()
+
+    temp_config = gen.generate()
+
+    polygons = mesh_polygon(temp_config)
+
+
+    stls = extrude_stls(polygons)
+
+    folder_path = Path("../stls")
+    layers = y_plus_calculator(temp_config)
+    with open(os.path.join(folder_path, "y_plus"), "w") as f:
+        for i, layer in enumerate(layers):
+            f.write(f"airfoil_{i+1}_firstLayer\t{layer};\n")
+
+    with open(os.path.join(folder_path, "config.json"), 'w') as f:
+        json.dump(asdict(temp_config), f, indent=4)
+
+    for i, stl in enumerate(stls):
+        stl.export(os.path.join(folder_path, f"airfoil_{i+1}.stl"))

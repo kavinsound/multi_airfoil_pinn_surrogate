@@ -1,0 +1,7 @@
+eMeshLevel      1;
+
+surfaceLevel    (1 1);
+
+boxLevel        ((1 1));
+
+surfaceLayers   15;
