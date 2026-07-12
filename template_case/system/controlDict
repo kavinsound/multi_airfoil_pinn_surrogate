@@ -37,7 +37,6 @@ runTimeModifiable yes;
 functions
 {
     #include "forceCoeffs"
-    #include "fieldAverage"
 }
 
 
