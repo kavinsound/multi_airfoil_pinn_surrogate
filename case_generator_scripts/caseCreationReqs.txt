@@ -13,5 +13,6 @@ Step 2: Replace the template
             the chord is 1 m. and the angle of attack and reflection is known. so simply do the math.
             magUInf is the same as previously calculated velocity
         d.  system/snappyInclude/ has y_plus, which must be replaced in same format by the y+ list.
+        e.  for how many airfoils there are, there is a corresponding extractSurfaceFeature and snappyHexMesh with a .{1,2,3}. copy the corresponding files and rename the copy without the .{1,2,3}
     5. make a copy of the config and save it in the main case_{num} folder for later
     6. add the number to a text file in the main folder (outside generated_cases) to use for script to iterate and run each case
