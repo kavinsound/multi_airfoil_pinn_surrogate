@@ -1,0 +1,17 @@
+CASE CLONING
+
+
+Step 1: Generate the STLS and config
+    1. Create a python script to create new instance of the parameter generator. Use the config to generate list of stls and y+ list
+    
+Step 2: Replace the template
+    2. Create new script, copy the template_case folder and name it as case_{num} for whatever number case that is. put that folder into a folder called generated_cases
+    3. Inside the new case_{num}, place the parameters into their specific spots
+        a. each stl has to be placed in constant/triSurface. name it as airfoil_{1,2,3}.stl. use {stl}.export to save it as stl
+        b. The Re has to be calculated into wind velocity. replace 0.orig/include/initialConditions. look at the sample and copy the same format and names
+        c. The rotation center also has to be calculated and replaced into forceCoeffs. CofR is the rotation center in (x y z) format. calculate it based on 1/3 of the chord
+            the chord is 1 m. and the angle of attack and reflection is known. so simply do the math.
+            magUInf is the same as previously calculated velocity
+        d.  system/snappyInclude/ has y_plus, which must be replaced in same format by the y+ list.
+    5. make a copy of the config and save it in the main case_{num} folder for later
+    6. add the number to a text file in the main folder (outside generated_cases) to use for script to iterate and run each case
