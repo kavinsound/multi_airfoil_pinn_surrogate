@@ -208,7 +208,7 @@ if __name__ == "__main__":
 
     stls = extrude_stls(polygons)
 
-    folder_path = Path("../stls_new").resolve()
+    folder_path = Path("../stls").resolve()
     layers = y_plus_calculator(temp_config)
     with open(os.path.join(folder_path, "y_plus"), "w") as f:
         for i, layer in enumerate(layers):
