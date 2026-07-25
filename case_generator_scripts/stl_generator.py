@@ -164,7 +164,7 @@ def extrude_stls(polygon_list):
     n = len(polygon_list)
     stl_list = []
     for i in range(n):
-        polygon_mesh = trimesh.creation.extrude_polygon(polygon_list[i], height=1.0)
+        polygon_mesh = trimesh.creation.extrude_polygon(polygon_list[i], height=0.25)
         stl_list.append(polygon_mesh)
     return stl_list
 
@@ -198,24 +198,24 @@ if __name__ == "__main__":
     gen = SobolAirfoilGenerator(state_file="airfoil_state.json", seed=42)
     
     # Fire up the interactive visual inspection application
-    visualizer = InteractiveVisualizer(gen)
-    plt.show()
+    # visualizer = InteractiveVisualizer(gen)
+    # plt.show()
 
     temp_config = gen.generate()
 
     polygons = mesh_polygon(temp_config)
 
 
-    # stls = extrude_stls(polygons)
+    stls = extrude_stls(polygons)
 
-    # folder_path = Path("../stls")
-    # layers = y_plus_calculator(temp_config)
-    # with open(os.path.join(folder_path, "y_plus"), "w") as f:
-    #     for i, layer in enumerate(layers):
-    #         f.write(f"airfoil_{i+1}_firstLayer\t{layer};\n")
+    folder_path = Path("../stls_new").resolve()
+    layers = y_plus_calculator(temp_config)
+    with open(os.path.join(folder_path, "y_plus"), "w") as f:
+        for i, layer in enumerate(layers):
+            f.write(f"airfoil_{i+1}_firstLayer\t{layer};\n")
 
-    # with open(os.path.join(folder_path, "config.json"), 'w') as f:
-    #     json.dump(asdict(temp_config), f, indent=4)
+    with open(os.path.join(folder_path, "config.json"), 'w') as f:
+        json.dump(asdict(temp_config), f, indent=4)
 
-    # for i, stl in enumerate(stls):
-    #     stl.export(os.path.join(folder_path, f"airfoil_{i+1}.stl"))
+    for i, stl in enumerate(stls):
+        stl.export(os.path.join(folder_path, f"airfoil_{i+1}.stl"))
