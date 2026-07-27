@@ -27,7 +27,7 @@ def mesh_polygon(
         shape = Polygon(foil_coords)
 
         shape = rotate(
-            shape, angle=-1 * np.rad2deg(angle_of_attack), origin=(0.25, 0)
+            shape, angle=-1 * np.rad2deg(angle_of_attack), origin=(0.5, 0)
         )  # rotate by attack angle
 
         if reflection:
@@ -82,7 +82,7 @@ def mesh_polygon(
 
         multi_shape = scale(multi_shape, xfact=scale_ratio, yfact=scale_ratio, origin=(0, 0))  # normalize chord length to 1
 
-        multi_shape = rotate(multi_shape, angle=-1 * np.rad2deg(angle_of_attack), origin=(0.25, 0))
+        multi_shape = rotate(multi_shape, angle=-1 * np.rad2deg(angle_of_attack), origin=(0.5, 0))
 
         if reflection:
             multi_shape = scale(multi_shape, xfact=1, yfact=-1, origin=(0, 0))
@@ -164,7 +164,21 @@ def extrude_stls(polygon_list):
     n = len(polygon_list)
     stl_list = []
     for i in range(n):
-        polygon_mesh = trimesh.creation.extrude_polygon(polygon_list[i], height=1.0)
+        polygon_mesh = trimesh.creation.extrude_polygon(polygon_list[i], height=0.25)
+
+        polygon_mesh.process()
+
+# 3. Apply specific repair functions to ensure it's watertight and clean
+        if not polygon_mesh.is_watertight:
+            trimesh.repair.fill_holes(polygon_mesh)
+
+        trimesh.repair.fix_normals(polygon_mesh)
+
+        # 4. Optional: Strip out any microscopic zero-area faces or slivers
+        zero_area_mask = polygon_mesh.area_faces > 0.0
+        if not np.all(zero_area_mask):
+            polygon_mesh.update_faces(zero_area_mask)
+
         stl_list.append(polygon_mesh)
     return stl_list
 
@@ -208,7 +222,7 @@ if __name__ == "__main__":
 
     stls = extrude_stls(polygons)
 
-    folder_path = Path("../stls")
+    folder_path = Path("../stls").resolve()
     layers = y_plus_calculator(temp_config)
     with open(os.path.join(folder_path, "y_plus"), "w") as f:
         for i, layer in enumerate(layers):
