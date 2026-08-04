@@ -1,9 +1,13 @@
-import gmsh
-import os
-from pathlib import Path
 import glob
-import numpy as np
+import os
 import sys
+from pathlib import Path
+
+import gmsh
+import meshio
+import numpy as np
+
+
 def createMesh(airfoil_list, y_plus_list, target_case_dir):
     if not gmsh.is_initialized():
         gmsh.initialize(sys.argv)
@@ -72,7 +76,27 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
 
     gmsh.model.mesh.generate(2) #generate actual mesh
 
-    gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)  
+    gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
+
+    gmsh.write("temp.msh")
+
+    gmsh.finalize()
+
+
+    #read with meshio and write to case
+    mesh = meshio.read("temp.msh")
+
+
+    target = os.path.join(target_case_dir, "constant", "polyMesh")
+
+    if not os.path.exists(target):
+        os.makedirs(target)
+
+    mesh.write(target, file_format = "openfoam")
+
+    if os.path.exists("temp.msh"):
+        os.remove("temp.msh")
+
 
 
 
@@ -86,3 +110,9 @@ def createFoil(coords, lc, prefix): #function to create individual foil loops
 
     gmsh.model.addPhysicalGroup(1, [curve_tag], name=f"{prefix}")
     return curve_tag, curve_loop
+
+
+if __name__ == "__main__":
+    config_path = Path("../test_config").resolve()
+
+    
