@@ -65,7 +65,28 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     gmsh.model.mesh.field.setNumber(2, "DistMin", 0.02)
     gmsh.model.mesh.field.setNumber(2, "DistMax", 5)
 
-    gmsh.model.mesh.field.setAsBackgroundMesh(2) #set as background mesh
+    # --- 3. Individual Boundary Layer Fields ---
+    bl_field_tags = []
+    for i, (foil_tag, first_layer_size) in enumerate(zip(curve_tags, y_plus_list)):
+        bl_tag = 10 + i  # Assign unique field IDs starting from 10
+        gmsh.model.mesh.field.add("BoundaryLayer", bl_tag)
+        
+        # Apply specific configuration to this exact curve
+        gmsh.model.mesh.field.setNumbers(bl_tag, "CurvesList", [foil_tag])
+        gmsh.model.mesh.field.setNumber(bl_tag, "Size", first_layer_size)  # Individual first layer height
+        gmsh.model.mesh.field.setNumber(bl_tag, "Ratio", 1.15)             # Growth rate
+        gmsh.model.mesh.field.setNumber(bl_tag, "Thickness", 0.005)         # Absolute max thickness
+        gmsh.model.mesh.field.setNumber(bl_tag, "Quads", 1)                # Structured quads
+        gmsh.model.mesh.field.setAsBoundaryLayer(bl_tag) 
+        bl_field_tags.append(bl_tag)
+
+    # --- 4. Combine All Fields using a Min Operator ---
+    # Field 2 (background threshold) + all individual boundary layer fields
+    min_field_tag = 100
+    gmsh.model.mesh.field.add("Min", min_field_tag)
+    gmsh.model.mesh.field.setNumbers(min_field_tag, "FieldsList", [2] + bl_field_tags)
+
+    gmsh.model.mesh.field.setAsBackgroundMesh(min_field_tag)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
 
@@ -77,7 +98,7 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
 
     # gmsh.fltk.initialize()
     
-    gmsh.option.setNumber("Mesh.Algorithm", 5)
+    gmsh.option.setNumber("Mesh.Algorithm", 6)
     gmsh.model.mesh.generate(2) #generate actual mesh
 
     # gmsh.fltk.run()
@@ -146,5 +167,10 @@ if __name__ == "__main__":
         coords = np.loadtxt(file)
         airfoil_list.append(coords)
 
+    y_plus_path = os.path.join(config_path, "y_plus")
+
+    y_p = np.loadtxt(y_plus_path, dtype=np.float64)
+    # print(y_p)
+
     target_case = Path("../sample_case").resolve()
-    createMesh(airfoil_list, [], target_case)
+    createMesh(airfoil_list, y_p, target_case)
