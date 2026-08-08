@@ -27,14 +27,14 @@ class SobolAirfoilGenerator:
     # Dimensions for base state: n_airfoils, Re, alpha_global, ids 1-3, and reflection
     BASE_DIMS = 7  
 
-    def __init__(self, state_file="airfoil_state.json", seed=42):
+    def __init__(self, state_file="airfoil_state.json", seed=42, dat_path="../cleaned_foils/"):
         self.state_file = state_file
         self.seed = seed
         self.dim = self.BASE_DIMS + self.MAX_EXTRA_AIRFOILS * self.DIMS_PER_EXTRA_AIRFOIL    #total number of required numbers generated
 
         self.foil_list = 0
 
-        list_path = Path("../cleaned_foils")
+        list_path = Path(dat_path).resolve()
 
         self.foil_list = len(glob.glob(os.path.join(list_path, "*.dat")))
         

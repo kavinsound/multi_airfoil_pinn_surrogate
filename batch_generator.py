@@ -50,6 +50,11 @@ def generateCase(config, id):
     #all done
 
 
-if __name__ == "__main__":
-   ... #to be added
+def generateBatch(generator, case_list_path, n=64):
+   for i in range(n):
+      
 
+
+
+if __name__ == "__main__":
+   ...
