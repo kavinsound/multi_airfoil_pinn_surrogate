@@ -76,19 +76,19 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     # --- 2. Distance and Threshold Fields ---
     gmsh.model.mesh.field.add("Distance", 1)  # Field 1 calculates distance
     gmsh.model.mesh.field.setNumbers(1, "CurvesList", curve_tags)
-    gmsh.model.mesh.field.setNumber(1, "Sampling", 100)
+    gmsh.model.mesh.field.setNumber(1, "Sampling", 300)
 
     gmsh.model.mesh.field.add("Threshold", 2)  # Sets thresholds
     gmsh.model.mesh.field.setNumber(2, "InField", 1)
     gmsh.model.mesh.field.setNumber(2, "SizeMin", 5e-4)
-    gmsh.model.mesh.field.setNumber(2, "SizeMax", 1e-2)
+    gmsh.model.mesh.field.setNumber(2, "SizeMax", 5e-3)
     gmsh.model.mesh.field.setNumber(2, "DistMin", 0.005)
     gmsh.model.mesh.field.setNumber(2, "DistMax", 0.1)
     gmsh.model.mesh.field.setNumber(2, "StopAtDistMax", 1)
 
     gmsh.model.mesh.field.add("Threshold", 3)  # Sets thresholds
     gmsh.model.mesh.field.setNumber(3, "InField", 1)
-    gmsh.model.mesh.field.setNumber(3, "SizeMin", 1e-2)
+    gmsh.model.mesh.field.setNumber(3, "SizeMin", 5e-3)
     gmsh.model.mesh.field.setNumber(3, "SizeMax", 0.05)
     gmsh.model.mesh.field.setNumber(3, "DistMin", 1)
     gmsh.model.mesh.field.setNumber(3, "DistMax", 6) 
@@ -135,17 +135,17 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     gmsh.option.setNumber('Mesh.RecombineAll', 1)
     gmsh.option.setNumber('Mesh.RecombinationAlgorithm', 1)
 
-    gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
+    # gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
 
 
     gmsh.option.setNumber("Mesh.Smoothing", 5)
 
     # --- 6. Generate Mesh & Export ---
-    gmsh.option.setNumber("Mesh.Algorithm", 6)
+    gmsh.option.setNumber("Mesh.Algorithm", 8)
     gmsh.model.mesh.generate(3)  # Generate actual 3D mesh
 
 
-    gmsh.model.mesh.optimize("Netgen")
+    # gmsh.model.mesh.optimize("Netgen")
 
     # gmsh.model.mesh.setOrder(2)
 
@@ -194,7 +194,7 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     )
 
 # Build the command as a list (without the '>' redirection)
-    meshCheckcmd = ["checkMesh", "-allGeometry", "-allTopology", "-case", str(target_case_dir)]
+    meshCheckcmd = ["checkMesh", "-allGeometry", "-writeSets", "vtk", "-allTopology", "-case", str(target_case_dir)]
 
     # Run the process and write stdout/stderr directly to the log file
     with open(log_path, "w") as log_file:
