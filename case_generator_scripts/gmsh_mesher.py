@@ -1,7 +1,8 @@
 import os
+import glob
+import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import gmsh
@@ -237,6 +238,7 @@ def createFoil(coords, lc, prefix):
 
 if __name__ == "__main__":
 
+    import time
     start = time.perf_counter()
     
     config_path = Path("../test_config").resolve()
