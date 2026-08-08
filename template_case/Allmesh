@@ -5,6 +5,13 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 DICT="-decomposeParDict system/decomposeParDict.2"
 
+START=$(date +%s%3N)
+
+rm -rf proc*
+
+rm -rf 0
+cp -r 0.orig 0
+
 echo Running blockMesh...
 
 blockMesh > /dev/null 2>&1
@@ -13,11 +20,11 @@ echo done
 
 surfaceFeatureExtract > /dev/null 2>&1
 
-decomposePar $DICT > /dev/null 2>&1 
+decomposePar > /dev/null 2>&1 
 
 echo Running snappyHexMesh...
 
-mpirun -np 2 snappyHexMesh $DICT -overwrite -parallel > /dev/null 2>&1
+mpirun -np 6 snappyHexMesh -overwrite -parallel 
 
 echo done
 
@@ -28,5 +35,11 @@ extrudeMesh > /dev/null 2>&1
 
 rm -rf proc*
 
+changeDictionary > /dev/null 2>&1
+
 checkMesh -allGeometry -allTopology > meshCheck.log
-echo done
+
+
+TIME=$((( $(date +%s%3N) - START ) / 1000))
+echo "done in $TIME sec"
+

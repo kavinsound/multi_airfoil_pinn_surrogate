@@ -22,7 +22,8 @@ boundaryField
     {
         type            zeroGradient;
     }
-    airfoil
+    
+    "(airfoil1|airfoil2|airfoil3)"
     {
         type            kLowReWallFunction; // CRITICAL: Do not use standard wall functions!
         value           uniform 0;

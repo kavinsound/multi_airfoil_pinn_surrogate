@@ -29,13 +29,13 @@ boundaryField
 
     "(outlet|upperWall|lowerWall)"
     {
-        type            totalPressue;
+        type            totalPressure;
         p0              uniform 0;
         value           uniform 0;
         
     }
 
-    airfoil
+    "(airfoil1|airfoil2|airfoil3)"
     {
         type            zeroGradient;
     }

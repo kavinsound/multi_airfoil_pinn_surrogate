@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Website:  www.openfoam.com                      |
+|   \\  /    A nd           | Documentation:  www.openfoam.com                |
+|    \\/     M anipulation  | Version:  v2512                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      nut;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0; // Starts at zero (or a very small laminar value)
+
+boundaryField
+{
+    inlet
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    "(outlet|upperWall|lowerWall)"
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    // Use your group or list for the airfoils
+    "(airfoil1|airfoil2|airfoil3)"
+    {
+        type            nutkWallFunction; 
+        value           uniform 0;
+    }
+
+    front
+    {
+        type            empty;
+    }
+    back
+    {
+        type            empty;
+    }
+}
