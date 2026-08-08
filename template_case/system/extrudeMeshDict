@@ -16,7 +16,7 @@ constructFrom patch;
 sourceCase ".";
 sourcePatches (front);
 
-exposedPatchName back;
+exposedPatchName front;
 
 // Flip surface normals before usage. Valid only for extrude from surface or
 // patch.
@@ -31,9 +31,9 @@ expansionRatio      1.0;
 
 linearNormalCoeffs
 {
-    thickness       0.5;
+    thickness       0.25;
 }
-
+frontBackType   empty;
 // Do front and back need to be merged? Usually only makes sense for 360
 // degree wedges.
 mergeFaces false;   //true;

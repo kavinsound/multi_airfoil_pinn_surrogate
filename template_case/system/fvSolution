@@ -44,18 +44,22 @@ solvers
         relTol          0;
     }
 
-
-    "(U|k|omega|gamma)"
+    Phi
     {
-        solver          PBiCGStMVM;
+        $p;
+    }
+
+    "(U|k|omega|gammaInt|ReThetat)"
+    {
+        solver          PBiCGStab;
         preconditioner  DILU;
         tolerance       1e-8;
         relTol          0.1; // Allows quick inner loop steps
     }
 
-    "(U|k|omega|gamma)Final"
+    "(U|k|omega|gammaInt|ReThetat)Final"
     {
-        solver          PBiCGStMVM;
+        solver          PBiCGStab;
         preconditioner  DILU;
         tolerance       1e-8;
         relTol          0;   // Force absolute convergence on the final PIMPLE loop
@@ -72,12 +76,19 @@ SIMPLE
         U               1e-5;
         k               1e-5;
         omega           1e-5;
+        gammaInt        1e-5;
+        ReThetat        1e-5;
     }
 }
 
 
 relaxationFactors
 {
+    fields
+    {
+        p               0.5;
+    }
+
     equations
     {
         U               0.7;

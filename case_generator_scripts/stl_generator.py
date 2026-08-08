@@ -219,10 +219,12 @@ if __name__ == "__main__":
 
     polygons = mesh_polygon(temp_config)
 
-
-    stls = extrude_stls(polygons)
-
-    folder_path = Path("../stls").resolve()
+    folder_path = Path("../test_config").resolve()
+    for i, polygon in enumerate(polygons):
+        coords = list(polygon.exterior.coords)
+        with open(os.path.join(folder_path, f"airfoil_{i}.dat"), "w") as f:
+            for x, y in coords:
+                f.writelines(f"{x:.6f} {y:.6f}\n")
     layers = y_plus_calculator(temp_config)
     with open(os.path.join(folder_path, "y_plus"), "w") as f:
         for i, layer in enumerate(layers):
@@ -231,5 +233,15 @@ if __name__ == "__main__":
     with open(os.path.join(folder_path, "config.json"), 'w') as f:
         json.dump(asdict(temp_config), f, indent=4)
 
-    for i, stl in enumerate(stls):
-        stl.export(os.path.join(folder_path, f"airfoil_{i+1}.stl"))
+
+
+    # stls = extrude_stls(polygons)
+
+    # folder_path = Path("../stls").resolve()
+    # layers = y_plus_calculator(temp_config)
+    # with open(os.path.join(folder_path, "y_plus"), "w") as f:
+    #     for i, layer in enumerate(layers):
+    #         f.write(f"airfoil_{i+1}_firstLayer\t{layer};\n")
+
+    # for i, stl in enumerate(stls):
+    #     stl.export(os.path.join(folder_path, f"airfoil_{i+1}.stl"))

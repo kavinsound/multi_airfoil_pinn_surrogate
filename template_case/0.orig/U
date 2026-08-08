@@ -37,7 +37,7 @@ boundaryField
         value           uniform $flowVelocity;
     }
 
-    airfoil
+    "(airfoil1|airfoil2|airfoil3)"
     {
         type            noSlip;
     }

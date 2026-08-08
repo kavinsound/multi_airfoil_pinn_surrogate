@@ -14,7 +14,7 @@ boundaryField
     inlet
     {
         type            turbulentMixingLengthDissipationRateInlet;
-        mixingLength    0.07;            // 7% of characteristic length scale (e.g. 1m chord -> 0.07)
+        mixingLength    0.07;            
         U               U;
         value           uniform 1.0;     // Placeholder initialization value
     }
@@ -22,7 +22,8 @@ boundaryField
     {
         type            zeroGradient;
     }
-    airfoil
+    
+    "(airfoil1|airfoil2|airfoil3)"
     {
         type            omegaWallFunction; // Automatically switches handles for y+ < 1
         value           uniform 1.0;

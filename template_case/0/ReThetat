@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M manipulation |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      ReTheta;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 0 0 0 0];
+
+// Set this to match your calculated inlet baseline for the specific design point
+internalField   uniform 250; 
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedValue;
+        value           uniform 250; // Parametrize this based on your design of experiments (DoE) inlet TI/Velocity
+    }
+
+    "(outlet|upperWall|lowerWall)"
+    {
+        type            zeroGradient;
+    }
+
+    "(airfoil1|airfoil2|airfoil3)"
+    {
+        type            zeroGradient; // Standard wall condition for ReTheta in OpenFOAM transition solvers
+    }
+
+    front
+    {
+        type            empty;
+    }
+    back
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

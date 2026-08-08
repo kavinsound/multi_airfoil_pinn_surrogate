@@ -3,11 +3,16 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
-DICT="-decomposeParDict system/decomposeParDict.6"
+rm -rf 0
+cp -r 0.orig 0
 
-decomposePar $DICT > /dev/null 2>&1
+rm -rf proc* > /dev/null 2>&1
 
-mpirun -np 6 pimpleFoam -parallel $DICT > /dev/null 2>&1
+decomposePar > /dev/null 2>&1
+
+potentialFoam -writep -writePhi > /dev/null 2>&1
+
+mpirun -np 6 simpleFoam -parallel > simple.log 
 
 reconstructPar > /dev/null 2>&1
 
