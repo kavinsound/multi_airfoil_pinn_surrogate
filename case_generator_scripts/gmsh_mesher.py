@@ -1,12 +1,10 @@
-import glob
-import shutil
 import os
+import subprocess
 import sys
-from pathlib import Path
 import time
+from pathlib import Path
 
 import gmsh
-import subprocess
 import numpy as np
 
 
@@ -21,7 +19,6 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     #lc_airfoil = 1e-4 #meters (around 100x smallest layer)
     lc_farfield = 0.05 #10 cm farfield
     lc_airfoil = 0.0
-    chord = 1.0
 
     # box bounding 
     minX = -6

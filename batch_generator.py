@@ -1,13 +1,14 @@
-import os
-from pathlib import Path
 import glob
-import numpy as np
 import json
-from dataclasses import asdict
-from case_generator_scripts.parameterGeneration import SobolAirfoilGenerator
-from case_generator_scripts.stl_generator import mesh_polygon
-from case_generator_scripts.stl_generator import y_plus_calculator
+import os
 import shutil
+from dataclasses import asdict
+from pathlib import Path
+
+import numpy as np
+
+from case_generator_scripts.parameterGeneration import SobolAirfoilGenerator
+from case_generator_scripts.stl_generator import mesh_polygon, y_plus_calculator
 
 
 def generateCase(config, id):
@@ -46,5 +47,9 @@ def generateCase(config, id):
     for i, coords in enumerate(coords_list):
         np.savetxt(os.path.join(trisurface_path, f"airfoil{i+1}.dat"), coords)
 
+    #all done
 
+
+if __name__ == "__main__":
+   ... #to be added
 
