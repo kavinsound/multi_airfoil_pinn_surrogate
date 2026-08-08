@@ -51,8 +51,16 @@ def generateCase(config, id):
 
 
 def generateBatch(generator, case_list_path, n=64):
+   index = generator.index #read current number of cases
+   open(case_list_path, "w").close() #reset list
    for i in range(n):
+      new_config = generator.generate()
+      id = index+i
+      generateCase(new_config, id) #hopefully this id is correct
+      with open(case_list_path, "a") as f:
+         f.write(f"case_{id}")
       
+            
 
 
 
