@@ -1,8 +1,7 @@
-import glob
-import json
+import glob  
 import os
+import pprint
 import shutil
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +11,9 @@ from case_generator_scripts.stl_generator import mesh_polygon, y_plus_calculator
 
 
 def generateCase(config, id):
-    polygons = mesh_polygon(config)
+    file_list = Path("cleaned_foils").glob("*.dat")
+    file_list = sorted(file_list)
+    polygons = mesh_polygon(config, file_list)
 
     coords_list = []
 
@@ -52,19 +53,22 @@ def generateCase(config, id):
 
 
 def generateBatch(generator, case_list_path, n=64):
-    index = generator.index  # read current number of cases
-    open(case_list_path, "w").close()  # reset list
-    for i in range(n):
+      index = generator.index  # read current number of cases
+      open(case_list_path, "w").close()  # reset list
+      for i in range(n):
         new_config = generator.generate()
+      #   pprint.pprint(new_config)
         id = index + i
         generateCase(new_config, id)  # hopefully this id is correct
+
         with open(case_list_path, "a") as f:
-            f.write(f"case_{id}")
+            f.write(f"case_{id}\n")
+      print(f"Generated case_{id}...")
 
 
 if __name__ == "__main__":
-   generator = SobolAirfoilGenerator(dat_path="cleaned_foils/")
-
+   generator = SobolAirfoilGenerator(dat_path="./cleaned_foils/")
+   # print(generator.foil_list)
    case_list_path = Path("case_list.txt")
    n = 16 # number of cases
 

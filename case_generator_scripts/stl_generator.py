@@ -1,26 +1,27 @@
-import os
-from pathlib import Path
 import glob
-import numpy as np
-from shapely.geometry import Polygon, MultiPolygon
-from shapely.affinity import rotate, scale
-import trimesh
-import matplotlib.pyplot as plt
-from scipy.special import ndtri
 import json
+import os
 from dataclasses import asdict
-from parameterGeneration import SobolAirfoilGenerator
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import trimesh
+from .parameterGeneration import SobolAirfoilGenerator
+from scipy.special import ndtri
+from shapely.affinity import rotate, scale
+from shapely.geometry import MultiPolygon, Polygon
 
 
 #                length of id array is number of airfoils (1-3)
 def mesh_polygon(
-    config
+    config, file_list
 ):
     n, ids, angle_of_attack, lengths, deflection_angles, gap_vectors, reflection = config.n, config.ids, config.alpha_global, config.chords, config.deflections, config.gaps, config.reflection
     gap_vectors = np.array(gap_vectors).astype(float)
     # reflection = 0
     # angle_of_attack = 0  #REMOVE LATER
-    file_list = dat_list()  # list of foils
+    # file_list = dat_list()  # list of foils
     # print(ids)
     if n == 1:  # only one airfoil is simple
         foil_coords = np.loadtxt(file_list[ids[0]])
@@ -124,7 +125,7 @@ class InteractiveVisualizer:  #Graph the generated setups to visually confirm qu
         self.ax.clear()
         
         # 3. Generate your coordinate arrays using your custom geometry builder
-        polygons = mesh_polygon(cfg)
+        polygons = mesh_polygon(cfg, dat_list())
         
         # 4. Render each polygon loop layer to the axis
         for idx, poly in enumerate(polygons):
@@ -216,8 +217,7 @@ if __name__ == "__main__":
     # plt.show()
 
     temp_config = gen.generate()
-
-    polygons = mesh_polygon(temp_config)
+    polygons = mesh_polygon(temp_config, dat_list())
 
     folder_path = Path("../test_config").resolve()
     for i, polygon in enumerate(polygons):
