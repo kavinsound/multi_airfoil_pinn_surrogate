@@ -13,4 +13,8 @@ boundary
         type    empty;
     }
 
+    airfoils
+    {
+        type    wall;
+    }
 }
