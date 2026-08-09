@@ -2,6 +2,7 @@ import glob
 import os
 import sys
 from pathlib import Path
+import subprocess
 
 import numpy as np
 
@@ -34,3 +35,12 @@ def meshCase():
 
 if __name__ == "__main__":
     meshCase()
+
+    meshCheckCMD = ["checkMesh", "-allGeometry", "-allTopology"]
+    logfile = "meshCheck.log"
+    result = subprocess.run(
+        meshCheckCMD,
+        check=False,
+        stdout=logfile,
+        stderr=logfile
+    )
