@@ -6,6 +6,9 @@
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 
+#include    "../0.orig/include/initialConditions"
+
+
 forceCoeffs
 {
     type            forceCoeffs;
@@ -22,11 +25,11 @@ forceCoeffs
     rhoInf          1.225;           // Required when rho = rhoInf
     liftDir         (0 1 0);
     dragDir         (1 0 0);
-    CofR            (0.72 0 0);  // Axle midpoint on ground
+    CofR            (1 0 0);  // Axle midpoint on ground
     pitchAxis       (0 0 1);
-    magUInf         13.77;
+    magUInf         $flowVelocity;
     lRef            1.00;        
-    Aref            0.25;        // Estimated
+    Aref            1.00;        // Estimated
 }
 
 

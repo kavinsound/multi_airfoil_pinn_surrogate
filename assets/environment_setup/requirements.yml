@@ -1,0 +1,18 @@
+name: cfd_env
+channels:
+  - conda-forge
+dependencies:
+  - matplotlib
+  - neuraloperator
+  - numpy
+  - pandas
+  - python=3.12
+  - pytorch
+  - pyvista
+  - scipy
+  - shapely
+  - tensorly
+  - tensorly-torch
+  - trimesh
+
+prefix: "/home/kavin/miniforge3/envs/cfd_env"
