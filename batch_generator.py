@@ -1,4 +1,5 @@
 import glob  
+import subprocess
 import os
 import pprint
 import shutil
@@ -102,4 +103,10 @@ if __name__ == "__main__":
 
    generateBatch(generator, case_list_path, n)
 
-   #add the job array and stuff later...
+   cmd = ["./submit.sh"]
+   subprocess.run( #run submit.sh to start the job array
+    cmd,
+    check=True,
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL
+   )
