@@ -84,18 +84,19 @@ SIMPLE
 
 relaxationFactors
 {
-    fields
+   fields
     {
-        p               0.5;
+        p           0.3;
     }
-
     equations
     {
-        U               0.7;
-        "k.*"          0.7;
-        "omega.*"      0.7;
-        "gamma.*"      0.7;
-    }
+        Ux          0.7;
+        Uy          0.7;
+        k           0.7;
+        omega       0.7;
+        ReThetat    0.4; // Lower this if it's stalling
+        gammaInt    0.4; // Same for intermittency
+    } 
 
 
 }

@@ -1,0 +1,19 @@
+
+#include    "../0.orig/include/initialConditions"
+
+Cp_calc
+    {
+        type            pressure;
+        libs            ("libfieldFunctionObjects.so");
+        mode            staticCoeff;
+        
+        p               p;          // Name of your pressure field (or p_rgh)
+        rho             rhoInf;        // Density field (or use rhoInf for incompressible)
+        
+        // Freestream reference values
+        pInf            0;          // Reference static pressure
+        rhoInf          1.184;      // Freestream density [kg/m^3]
+        UInf            ($flowVelocity 0 0);   // Freestream velocity vector [m/s]
+        
+        writeControl    writeTime;  // Write out with your standard results
+    }
