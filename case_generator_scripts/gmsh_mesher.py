@@ -154,8 +154,8 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
 
     gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
 
-    gmsh.write("temp.msh")
-    mesh_path = Path("temp.msh")
+    gmsh.write("airfoil_mesh.msh")
+    mesh_path = Path("airfoil_mesh.msh")
 
     # if '-nopopup' not in sys.argv:
     # # Optional: explicitly initialize the GUI toolkit if it hasn't been started
@@ -206,10 +206,7 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
             text=True
         )
 
-    if os.path.exists("temp.msh"):
-        os.remove("temp.msh")
-
-
+    
 
 
 

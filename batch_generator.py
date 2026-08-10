@@ -67,7 +67,7 @@ def generateBatch(generator, case_list_path, n=64):
             f.write(f"case_{id}\n")
 
         initializeSQLITE(id, "job_status.db")
-      print(f"Generated case_{id}...")
+        print(f"Generated case_{id}...")
 
 def initializeSQLITE(id, sql_path):
     conn = sqlite3.connect(sql_path)
@@ -103,10 +103,8 @@ if __name__ == "__main__":
 
    generateBatch(generator, case_list_path, n)
 
-   cmd = ["./submit.sh"]
+   cmd = ["bash", "submit.sh"]
    subprocess.run( #run submit.sh to start the job array
     cmd,
-    check=True,
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL
+    check=True
    )
