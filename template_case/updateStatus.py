@@ -1,44 +1,31 @@
-import json
+import sqlite3
 from pathlib import Path
 import os
 import sys
 
-def checkFile(file_name):
-    p = Path(file_name)
+id = Path(__file__).resolve().parent.stem
 
-    data = {
-        "status": "not started"
-    }
+def update_db(option):
+    db = Path("../../job_status.db") #hard coding path and name but ok
 
-    if not p.exists():
-       with open(p, "w") as f:
-           json.dump(data, f, indent=4) 
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
 
+    cursor.execute(
+        """
+            UPDATE job_stages 
+            SET stage = ? 
+            WHERE job_id = ?
+        """,
+        (option, id),
+    )
 
-def updateStatus(file_name, status=0):
-    p = Path(file_name)
+    conn.commit()
+    conn.close()
 
-    checkFile(file_name)
-
-    options = ["not started", "meshing", "solving", "completed"]
-
-    if status >= len(options):
-        status = 0 #shouldnt happen
-        print("invalid status option pls fix")
-
-    data = {
-        "status": options[status]
-    }
-
-    with open(p, "w") as f:
-        json.dump(data, f, indent=4)
-
-    #add print statement here maybe?
 
 
 if __name__ == "__main__":
-    target_json = "caseStatus.json"
     option = int(sys.argv[1])
 
-    updateStatus(target_json, option)
-    
+    update_db(option)
