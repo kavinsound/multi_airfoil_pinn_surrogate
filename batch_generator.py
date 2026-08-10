@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import sqlite3
 
 from case_generator_scripts.parameterGeneration import SobolAirfoilGenerator
 from case_generator_scripts.stl_generator import mesh_polygon, y_plus_calculator
@@ -63,7 +64,34 @@ def generateBatch(generator, case_list_path, n=64):
 
         with open(case_list_path, "a") as f:
             f.write(f"case_{id}\n")
+
+        initializeSQLITE(id, "job_status.db")
       print(f"Generated case_{id}...")
+
+def initializeSQLITE(id, sql_path):
+    conn = sqlite3.connect(sql_path)
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+    """
+        CREATE TABLE IF NOT EXISTS job_stages (
+            job_id TEXT PRIMARY KEY,
+            stage INTEGER
+        )
+    """
+    )
+
+    cursor.execute(
+    """
+        INSERT OR IGNORE INTO job_stages (job_id, stage) 
+        VALUES (?, ?)
+    """,
+        (f"case_{id}", 0),
+    )
+
+    conn.commit()
+    conn.close()
 
 
 if __name__ == "__main__":
