@@ -27,7 +27,7 @@ boundaryField
         type            zeroGradient;
     }
 
-    "(outlet|upperWall|lowerWall)"
+    outlets
     {
         type            totalPressure;
         p0              uniform 0;
@@ -35,19 +35,16 @@ boundaryField
         
     }
 
-    "(airfoil1|airfoil2|airfoil3)"
+    airfoils
     {
         type            zeroGradient;
     }
 
-    front
+    frontAndBack
     {
         type            empty;
     }
-    back
-    {
-        type            empty;
-    }
+    
 }
 
 

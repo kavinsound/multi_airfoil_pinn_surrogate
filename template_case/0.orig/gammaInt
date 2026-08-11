@@ -16,22 +16,20 @@ boundaryField
         type            fixedValue;
         value           uniform 1;
     }
-    "(outlet|upperWall|lowerWall)"
+    outlets
     {
-        type            zeroGradient;
+        type            inletOutlet;
+        inletValue      uniform 1;
+        value           uniform 1;
     }
     
-    "(airfoil1|airfoil2|airfoil3)"
+    airfoils
     {
         type            zeroGradient; // or fixedValue uniform 1; depending on OpenFOAM version
     }
     
 
-    front
-    {
-        type            empty;
-    }
-    back
+    frontAndBack
     {
         type            empty;
     }

@@ -18,23 +18,20 @@ boundaryField
         U               U;
         value           uniform 1.0;     // Placeholder initialization value
     }
-    "(outlet|upperWall|lowerWall)"
+    outlets
     {
         type            zeroGradient;
     }
     
-    "(airfoil1|airfoil2|airfoil3)"
+    airfoils
     {
         type            omegaWallFunction; // Automatically switches handles for y+ < 1
         value           uniform 1.0;
     }
 
-    front
+    frontAndBack
     {
         type            empty;
     }
-    back
-    {
-        type            empty;
-    }
+    
 }

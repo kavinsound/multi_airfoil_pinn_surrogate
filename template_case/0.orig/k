@@ -18,22 +18,19 @@ boundaryField
         U               U;               // References the velocity field dynamically
         value           uniform 0.1; // Placeholder initialization value
     }
-    "(outlet|upperWall|lowerWall)"
+    outlets
     {
         type            zeroGradient;
     }
     
-    "(airfoil1|airfoil2|airfoil3)"
+    airfoils
     {
         type            kLowReWallFunction; // CRITICAL: Do not use standard wall functions!
         value           uniform 0;
     }
-    front
+    frontAndBack
     {
         type            empty;
     }
-    back
-    {
-        type            empty;
-    }
+    
 }

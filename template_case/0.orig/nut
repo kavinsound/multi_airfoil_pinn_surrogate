@@ -26,25 +26,22 @@ boundaryField
         value           uniform 0;
     }
 
-    "(outlet|upperWall|lowerWall)"
+    outlets
     {
         type            calculated;
         value           uniform 0;
     }
 
     // Use your group or list for the airfoils
-    "(airfoil1|airfoil2|airfoil3)"
+    airfoils
     {
         type            nutkWallFunction; 
         value           uniform 0;
     }
 
-    front
+    frontAndBack
     {
         type            empty;
     }
-    back
-    {
-        type            empty;
-    }
+    
 }

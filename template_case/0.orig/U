@@ -30,26 +30,21 @@ boundaryField
         value           uniform $flowVelocity;
     }
 
-    "(outlet|upperWall|lowerWall)"
+    outlets
     {
-        type            inletOutlet;
-        inletValue      uniform (0 0 0);
-        value           uniform $flowVelocity;
-    }
-
-    "(airfoil1|airfoil2|airfoil3)"
+        type            freestreamVelocity;
+        freestreamValue uniform $flowVelocity;
+    } 
+    airfoils
     {
         type            noSlip;
     }
 
-    front
+    frontAndBack
     {
         type            empty;
     }
-    back
-    {
-        type            empty;
-    }
+    
 }
 
 
