@@ -16,6 +16,8 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
         gmsh.clear()
     gmsh.model.add("airfoil mesh") #initialize
 
+    y_plus_list = np.atleast_1d(y_plus_list)
+
     #Mesh resolution
     #lc_airfoil = 1e-4 #meters (around 100x smallest layer)
     lc_farfield = 0.05 #10 cm farfield
@@ -95,6 +97,10 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
 
     # --- 3. Individual Boundary Layer Fields ---
     bl_field_tags = []
+
+    print(curve_tags)
+    print(y_plus_list)
+
     for i, (foil_tag, first_layer_size) in enumerate(zip(curve_tags, y_plus_list)):
         bl_tag = 10 + i  # Assign unique field IDs starting from 10
         gmsh.model.mesh.field.add("BoundaryLayer", bl_tag)
@@ -249,8 +255,8 @@ if __name__ == "__main__":
     y_plus_path = os.path.join(config_path, "y_plus")
 
     y_p = np.loadtxt(y_plus_path, dtype=np.float64)
-    # print(y_p)
-
+    # print(type(y_p))
+    
     target_case = Path("../sample_case").resolve()
     createMesh(airfoil_list, y_p, target_case)
 

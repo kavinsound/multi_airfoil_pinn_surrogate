@@ -7,7 +7,6 @@
 #SBATCH --mem=8G
 #SBATCH --time=00:40:00
 #SBATCH --output=logs/job_%A_%a.out
-#SBATCH --error=logs/job_%A_%a.err
 module purge
 
 source $HOME/.bashrc

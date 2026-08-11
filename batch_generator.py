@@ -60,7 +60,7 @@ def generateBatch(generator, case_list_path, n=64):
       for i in range(n):
         new_config = generator.generate()
       #   pprint.pprint(new_config)
-        id = index + i
+        id = index + i + 1
         generateCase(new_config, id)  # hopefully this id is correct
 
         with open(case_list_path, "a") as f:
