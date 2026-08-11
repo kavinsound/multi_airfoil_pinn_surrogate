@@ -1,0 +1,21 @@
+
+#include    "../0.orig/include/initialConditions"
+
+wallShearStress
+{
+    type            wallShearStress;
+    libs            ("libfieldFunctionObjects.so");
+    patches         ( "airfoils" ); // Replace with your wall patch name
+    writeControl    timeStep;
+    writeInterval   1;
+}
+
+Cf
+{
+    type            exprField;
+    libs            ("libfieldFunctionObjects.so");
+    field           Cf;
+    expression      "mag(wallShearStress) / (0.5 * $flowVelocity^2)"; // Adjust UInf as needed
+    writeControl    timeStep;
+    writeInterval   1;
+}

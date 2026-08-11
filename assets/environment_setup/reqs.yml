@@ -1,12 +1,16 @@
-name: cfd_env
 channels:
   - conda-forge
 dependencies:
+  - gmsh
+  - mapbox_earcut
   - matplotlib
+  - meshio
   - neuraloperator
+  - notebook
   - numpy
   - pandas
   - python=3.12
+  - python-gmsh
   - pytorch
   - pyvista
   - scipy
@@ -15,4 +19,3 @@ dependencies:
   - tensorly-torch
   - trimesh
 
-prefix: "/home/kavin/miniforge3/envs/cfd_env"

@@ -1,10 +1,12 @@
 import glob  
+import subprocess
 import os
 import pprint
 import shutil
 from pathlib import Path
 
 import numpy as np
+import sqlite3
 
 from case_generator_scripts.parameterGeneration import SobolAirfoilGenerator
 from case_generator_scripts.stl_generator import mesh_polygon, y_plus_calculator
@@ -58,12 +60,39 @@ def generateBatch(generator, case_list_path, n=64):
       for i in range(n):
         new_config = generator.generate()
       #   pprint.pprint(new_config)
-        id = index + i
+        id = index + i + 1
         generateCase(new_config, id)  # hopefully this id is correct
 
         with open(case_list_path, "a") as f:
             f.write(f"case_{id}\n")
-      print(f"Generated case_{id}...")
+
+        initializeSQLITE(id, "job_status.db")
+        print(f"Generated case_{id}...")
+
+def initializeSQLITE(id, sql_path):
+    conn = sqlite3.connect(sql_path)
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+    """
+        CREATE TABLE IF NOT EXISTS job_stages (
+            job_id TEXT PRIMARY KEY,
+            stage INTEGER
+        )
+    """
+    )
+
+    cursor.execute(
+    """
+        INSERT OR IGNORE INTO job_stages (job_id, stage) 
+        VALUES (?, ?)
+    """,
+        (f"case_{id}", 0),
+    )
+
+    conn.commit()
+    conn.close()
 
 
 if __name__ == "__main__":
@@ -74,4 +103,8 @@ if __name__ == "__main__":
 
    generateBatch(generator, case_list_path, n)
 
-   #add the job array and stuff later...
+   cmd = ["bash", "submit.sh"]
+   subprocess.run( #run submit.sh to start the job array
+    cmd,
+    check=True
+   )
