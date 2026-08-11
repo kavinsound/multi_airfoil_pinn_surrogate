@@ -29,10 +29,9 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     minY = -6
     maxY = 6
 
-    # num_threads = 4  # Set to your desired core count
-    # gmsh.option.setNumber("Mesh.MaxNumThreads1D", num_threads) parallel meshing breaks
-    # gmsh.option.setNumber("Mesh.MaxNumThreads2D", num_threads)
-    # gmsh.option.setNumber("Mesh.MaxNumThreads3D", num_threads)
+    gmsh.option.setNumber("Mesh.MaxNumThreads1D", 1)
+    gmsh.option.setNumber("Mesh.MaxNumThreads2D", 1)
+    gmsh.option.setNumber("Mesh.MaxNumThreads3D", 1)
 
     curve_tags = []
     curve_loops = []
