@@ -39,15 +39,6 @@ functions
     #include "forceCoeffs"
     #include "pressureCoeffs"
     #include "Cf"
-
-    solverInfo  //track residuals for later if needed
-    {
-        type            solverInfo;
-        libs            (utilityFunctionObjects);
-        writeControl    timeStep;
-        writeInterval   1;
-        fields          (U p k omega gamma ReThetat);
-    }
 }
 
 
