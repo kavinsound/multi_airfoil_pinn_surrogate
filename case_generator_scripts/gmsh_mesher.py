@@ -69,6 +69,8 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     
     gmsh.model.geo.synchronize()
 
+    # gmsh.model.occ.removeAllDuplicates()
+    # gmsh.model.occ.synchronize()
 
     gmsh.option.setNumber("Mesh.ElementOrder", 1)
 
