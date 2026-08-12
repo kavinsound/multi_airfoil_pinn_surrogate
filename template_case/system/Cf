@@ -1,21 +1,29 @@
 
 #include    "../0.orig/include/initialConditions"
 
+// UInfCalc    #calc "mag($flowVelocity)"
+
 wallShearStress
 {
     type            wallShearStress;
     libs            ("libfieldFunctionObjects.so");
     patches         ( "airfoils" ); // Replace with your wall patch name
     writeControl    timeStep;
-    writeInterval   1;
+    writeInterval   500;
 }
 
-Cf
-{
-    type            exprField;
-    libs            ("libfieldFunctionObjects.so");
-    field           Cf;
-    expression      "mag(wallShearStress) / (0.5 * $flowVelocity^2)"; // Adjust UInf as needed
-    writeControl    timeStep;
-    writeInterval   1;
-}
+// Cf
+// {
+//     type            exprField;
+//     libs            ("libfieldFunctionObjects.so");
+//     field           Cf;
+
+//     variables
+//     (
+//         "UInf = $UInfCalc"
+//     );
+
+//     expression      "mag(wallShearStress) / (0.5 * pow($velocity, 2))"; // Adjust UInf as needed
+//     writeControl    timeStep;
+//     writeInterval   500;
+// }

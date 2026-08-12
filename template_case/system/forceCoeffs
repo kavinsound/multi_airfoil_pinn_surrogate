@@ -27,7 +27,7 @@ forceCoeffs
     dragDir         (1 0 0);
     CofR            (1 0 0);  // Axle midpoint on ground
     pitchAxis       (0 0 1);
-    magUInf         $flowVelocity;
+    magUInf         $velocity;
     lRef            1.00;        
     Aref            1.00;        // Estimated
 }

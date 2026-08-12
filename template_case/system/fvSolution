@@ -92,10 +92,11 @@ relaxationFactors
     {
         Ux          0.7;
         Uy          0.7;
+        U           0.7;
         k           0.7;
         omega       0.7;
-        ReThetat    0.4; // Lower this if it's stalling
-        gammaInt    0.4; // Same for intermittency
+        ReThetat    0.7; // Lower this if it's stalling
+        gammaInt    0.7; // Same for intermittency
     } 
 
 

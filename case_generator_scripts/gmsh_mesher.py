@@ -29,17 +29,18 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     minY = -6
     maxY = 6
 
-    num_threads = 4  # Set to your desired core count
-    gmsh.option.setNumber("Mesh.MaxNumThreads1D", num_threads)
-    gmsh.option.setNumber("Mesh.MaxNumThreads2D", num_threads)
-    gmsh.option.setNumber("Mesh.MaxNumThreads3D", num_threads)
+    gmsh.option.setNumber("Mesh.MaxNumThreads1D", 1)
+    gmsh.option.setNumber("Mesh.MaxNumThreads2D", 1)
+    gmsh.option.setNumber("Mesh.MaxNumThreads3D", 1)
 
     curve_tags = []
     curve_loops = []
+    te_tags = []
     for i, foil in enumerate(airfoil_list):
-        tag, loop = createFoil(foil, lc_airfoil, f"airfoil{i+1}") 
+        tag, loop, te_tag = createFoil(foil, lc_airfoil, f"airfoil{i+1}") 
         curve_tags.append(tag)
         curve_loops.append(loop)
+        te_tags.append(te_tag)
 
    # defining box 
     p1 = gmsh.model.geo.addPoint(minX, minY, 0, lc_farfield)
@@ -69,6 +70,8 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     
     gmsh.model.geo.synchronize()
 
+    # gmsh.model.occ.removeAllDuplicates()
+    # gmsh.model.occ.synchronize()
 
     gmsh.option.setNumber("Mesh.ElementOrder", 1)
 
@@ -76,8 +79,10 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     volumes = [tag for dim, tag in extrusion_tags if dim == 3]         # [1]
     lateral_surfaces = [tag for dim, tag in extrusion_tags if dim == 2] # boundaries/walls
     # --- 2. Distance and Threshold Fields ---
+    flat_curve_tags = [tag for pair in curve_tags for tag in pair]
+
     gmsh.model.mesh.field.add("Distance", 1)  # Field 1 calculates distance
-    gmsh.model.mesh.field.setNumbers(1, "CurvesList", curve_tags)
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", flat_curve_tags)
     gmsh.model.mesh.field.setNumber(1, "Sampling", 300)
 
     gmsh.model.mesh.field.add("Threshold", 2)  # Sets thresholds
@@ -106,12 +111,20 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
         gmsh.model.mesh.field.add("BoundaryLayer", bl_tag)
         
         # Apply specific configuration to this exact curve
-        gmsh.model.mesh.field.setNumbers(bl_tag, "CurvesList", [foil_tag])
+        gmsh.model.mesh.field.setNumbers(bl_tag, "CurvesList", foil_tag)
         gmsh.model.mesh.field.setNumber(bl_tag, "Size", first_layer_size)  # First layer height
         gmsh.model.mesh.field.setNumber(bl_tag, "Ratio", 1.2)             # Growth rate
         gmsh.model.mesh.field.setNumber(bl_tag, "Thickness", 0.001)        # Absolute max thickness
         gmsh.model.mesh.field.setNumber(bl_tag, "Quads", 1)                # Structured quads
-        # gmsh.model.mesh.field.setNumber(bl_tag, "IntersectAxis", 1)
+
+        curve_te_tags = te_tags[i]
+        upper_tag = curve_te_tags[0]
+        lower_tag = curve_te_tags[1]
+
+        gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsList", [upper_tag, lower_tag])
+        gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsSizesList", [3, 3])  # tune 3-6
+
+
         gmsh.model.mesh.field.setAsBoundaryLayer(bl_tag) 
         bl_field_tags.append(bl_tag)
 
@@ -217,26 +230,28 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
 
 
 def createFoil(coords, lc, prefix):
-    # 1. If the first and last points are identical, remove the last one 
-    # so the array doesn't double-tap the trailing edge node.
     if np.allclose(coords[0], coords[-1]):
         coords = coords[:-1]
 
     node_tags = []
     for x, y in coords:
         node_tags.append(gmsh.model.geo.addPoint(x, y, 0, lc))
-    
-    # To make a single spline form a closed loop, append the FIRST node tag 
-    # to the end of the node_tags list so it loops back cleanly.
-    node_tags.append(node_tags[0])
 
-    curve_tag = gmsh.model.geo.addSpline(node_tags)
-    curve_loop = gmsh.model.geo.addCurveLoop([curve_tag])
+    te_upper_tag = node_tags[0]
+    te_lower_tag = node_tags[-1]
+    te_tags = [te_upper_tag, te_lower_tag]
 
-    gmsh.model.addPhysicalGroup(1, [curve_tag], name=f"{prefix}")
-    
-    # Returns a single tag and a single loop
-    return curve_tag, curve_loop
+    # Spline over the airfoil surface ONLY — no wraparound repeat here
+    surface_spline = gmsh.model.geo.addSpline(node_tags)
+
+    # Explicit straight line closes the loop across the blunt TE face
+    te_line = gmsh.model.geo.addLine(te_lower_tag, te_upper_tag)
+
+    curve_tags_foil = [surface_spline, te_line]
+    curve_loop = gmsh.model.geo.addCurveLoop(curve_tags_foil)
+    gmsh.model.addPhysicalGroup(1, curve_tags_foil, name=f"{prefix}")
+
+    return curve_tags_foil, curve_loop, te_tags
 
 
 if __name__ == "__main__":

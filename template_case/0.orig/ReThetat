@@ -10,7 +10,7 @@ FoamFile
     version     2.0;
     format      ascii;
     class       volScalarField;
-    object      ReTheta;
+    object      ReThetat;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -27,24 +27,23 @@ boundaryField
         value           uniform 250; // Parametrize this based on your design of experiments (DoE) inlet TI/Velocity
     }
 
-    "(outlet|upperWall|lowerWall)"
+    outlets
     {
-        type            zeroGradient;
+        type            inletOutlet;
+        inletValue      uniform 250;
+        value           uniform 250;
     }
 
-    "(airfoil1|airfoil2|airfoil3)"
+    airfoils
     {
         type            zeroGradient; // Standard wall condition for ReTheta in OpenFOAM transition solvers
     }
 
-    front
+    frontAndBack
     {
         type            empty;
     }
-    back
-    {
-        type            empty;
-    }
+    
 }
 
 // ************************************************************************* //
