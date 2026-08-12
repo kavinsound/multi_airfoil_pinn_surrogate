@@ -35,7 +35,7 @@ def generateCase(config, id):
     Re_n = config.Re
 
     flow_vel = Re_n * 1.5e-5  # kinematic viscosity of air
-    vel_text = f"flowVelocity\t({flow_vel:.3f} 0 0);\n"
+    vel_text = f"flowVelocity\t({flow_vel:.3f} 0 0);\nvelocity\t{flow_vel:.3f};\n"
     include_file_path = os.path.join(
         case_path, "0.orig", "include", "initialConditions"
     )

@@ -15,7 +15,7 @@ Cf
     type            exprField;
     libs            ("libfieldFunctionObjects.so");
     field           Cf;
-    expression      "mag(wallShearStress) / (0.5 * $flowVelocity^2)"; // Adjust UInf as needed
+    expression      "mag(wallShearStress) / (0.5 * $velocity^2)"; // Adjust UInf as needed
     writeControl    timeStep;
     writeInterval   1;
 }

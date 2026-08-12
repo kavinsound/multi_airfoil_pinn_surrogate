@@ -13,7 +13,7 @@ Cp_calc
         // Freestream reference values
         pInf            0;          // Reference static pressure
         rhoInf          1.184;      // Freestream density [kg/m^3]
-        UInf            ($flowVelocity 0 0);   // Freestream velocity vector [m/s]
+        UInf            $flowVelocity;   // Freestream velocity vector [m/s]
         
         writeControl    writeTime;  // Write out with your standard results
     }
