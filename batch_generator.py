@@ -43,6 +43,14 @@ def generateCase(config, id):
     with open(include_file_path, "w") as f:
         f.write(vel_text)
 
+    domain_pass_time = 16 / flow_vel #16 m length of domain
+
+    endTime = domain_pass_time * 2 #2 cycles
+
+    with open(os.path.join(case_path, "system", "endTimeControl")) as f:
+        f.write(f"calculatedEndTime\t{endTime};\n")
+
+
     trisurface_path = os.path.join(case_path, "constant", "triSurface")
     shutil.rmtree(trisurface_path)
     os.mkdir(trisurface_path)
