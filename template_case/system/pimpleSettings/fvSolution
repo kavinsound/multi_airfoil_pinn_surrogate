@@ -67,18 +67,21 @@ solvers
 
 }
 
-SIMPLE
+PIMPLE
 {
-    nNonOrthogonalCorrectors 0;
+    nOuterCorrectors     2;      
+    nCorrectors          2;      
+    nNonOrthogonalCorrectors 1;
+
+    pRefCell             0;
+    pRefValue            0;
+
     residualControl
     {
-        p               1e-5;
-        U               1e-5;
-        k               1e-5;
-        omega           1e-5;
-        gammaInt        1e-5;
-        ReThetat        1e-5;
-    }
+        p               1e-4;
+        U               1e-4;
+        "(k|omega|ReThetat|gammaInt)" 1e-4;
+    } 
 }
 
 
