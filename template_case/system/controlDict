@@ -20,14 +20,14 @@ startFrom       startTime;
 startTime       0;
 
 stopAt          endTime;
-endTime         10000;
+endTime         10;
 
-deltaT          1;
+deltaT          0.001;
 // steady-state does not use adjustTimeStep or Courant numbers
 // adjustTimeStep no; 
 
 writeControl    runTime;
-writeInterval   500; // Write every 500 iterations to save disk space
+writeInterval   1; // Write every 500 iterations to save disk space
 
 purgeWrite      5;   // Keeps only the latest 2 write folders
 writeFormat     binary;
