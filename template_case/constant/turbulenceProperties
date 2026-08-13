@@ -23,6 +23,16 @@ RAS
 
     turbulence      on;
     printCoeffs     on;
+
+
+    kOmegaSSTCoeffs
+    {
+        // Increase maxLambdaIter from its default of 10 to a higher value
+        maxLambdaIter 20; 
+        
+        // You can also adjust the error tolerance if necessary
+        // lambdaErr 1e-6; 
+    }
 }
 
 // ************************************************************************* //
