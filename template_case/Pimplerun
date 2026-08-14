@@ -10,8 +10,6 @@ rm -rf proc* > /dev/null 2>&1
 
 decomposePar > /dev/null 2>&1
 
-potentialFoam -writep -writePhi > /dev/null 2>&1
-
 mpirun -np 6 pimpleFoam -parallel 
 
 reconstructPar > /dev/null 2>&1
