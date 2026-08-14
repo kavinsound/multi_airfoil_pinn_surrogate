@@ -12,7 +12,7 @@ decomposePar > /dev/null 2>&1
 
 potentialFoam -writep -writePhi > /dev/null 2>&1
 
-mpirun -np 6 pimpleFoam -parallel > simple.log 
+mpirun -np 6 simpleFoam -parallel 
 
 reconstructPar > /dev/null 2>&1
 

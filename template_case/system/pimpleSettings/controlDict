@@ -1,0 +1,49 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include 	"endTimeControl"
+
+application     pimpleFoam;   // note: capital F — case-sensitive on Linux
+
+startFrom       latestTime;   // so reruns auto-continue from wherever you stopped
+startTime       0;
+
+stopAt          endTime;
+endTime         $calculatedEndTime;        // set this per-phase in your automation script
+
+deltaT          0.001;        // initial guess — small; adjustTimeStep will correct it
+adjustTimeStep  yes;
+maxCo           1;          // typical stable range 0.5–1 for backward scheme
+maxDeltaT       0.01;         // optional safety cap, tune to your case
+
+writeControl    adjustableRunTime;  // pairs with adjustTimeStep — writes at real-time intervals, not fixed iteration counts
+writeInterval   0.05;               // in seconds now, not iterations — pick based on your period T once known, e.g. T/20
+
+purgeWrite      0;            // see note below — don't purge for this run
+writeFormat     ascii;
+writePrecision  6;
+
+runTimeModifiable yes;
+functions
+{
+    #include "forceCoeffs"
+    #include "pressureCoeffs"
+    #include "Cf"
+    #include "fieldAverage"
+}
+
+
+// ************************************************************************* //

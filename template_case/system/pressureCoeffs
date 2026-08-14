@@ -16,4 +16,5 @@ Cp_calc
         UInf            $flowVelocity;   // Freestream velocity vector [m/s]
         
         writeControl    writeTime;  // Write out with your standard results
+        result          Cp;
     }
