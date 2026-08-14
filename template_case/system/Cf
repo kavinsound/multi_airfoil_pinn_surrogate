@@ -8,8 +8,8 @@ wallShearStress
     type            wallShearStress;
     libs            ("libfieldFunctionObjects.so");
     patches         ( "airfoils" ); // Replace with your wall patch name
-    writeControl    timeStep;
-    writeInterval   500;
+    writeControl    runTime;
+    writeInterval   1;
 }
 
 // Cf
