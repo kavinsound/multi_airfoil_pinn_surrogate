@@ -41,6 +41,13 @@ fieldAverages
                 base            time;
             }
 
+            nut
+            {
+                mean            on;
+                prime2Mean      off;
+                base            time;
+            }
+
             // Specific Dissipation Rate
             omega
             {
@@ -50,7 +57,7 @@ fieldAverages
             }
 
             // Intermittency (SST-LM transition model)
-            gamma
+            gammaInt
             {
                 mean            on;
                 prime2Mean      off;
