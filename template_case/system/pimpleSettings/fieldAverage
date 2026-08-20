@@ -79,5 +79,5 @@ fieldAverages
                 prime2Mean      off;
                 base            time;
             }
-        )
+        );
     }
