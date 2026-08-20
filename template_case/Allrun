@@ -3,19 +3,18 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
-rm -rf 0
-cp -r 0.orig 0
+python updateStatus.py 1
 
-rm -rf proc* > /dev/null 2>&1
+python mesher.py
 
-python switchSettings.py p
+python updateStatus.py 2
 
-decomposePar > /dev/null 2>&1
+bash Simplerun
 
-mpirun -np 6 pimpleFoam -parallel 
+python updateStatus.py 3
 
-reconstructPar > /dev/null 2>&1
+bash Pimplerun
 
-rm -rf proc* > /dev/null 2>&1
+#add the data extraction...
 
 #------------------------------------------------------------------------------
