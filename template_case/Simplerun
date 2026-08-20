@@ -8,6 +8,8 @@ cp -r 0.orig 0
 
 rm -rf proc* > /dev/null 2>&1
 
+python switchSetings.py s
+
 decomposePar > /dev/null 2>&1
 
 potentialFoam -writep -writePhi > /dev/null 2>&1

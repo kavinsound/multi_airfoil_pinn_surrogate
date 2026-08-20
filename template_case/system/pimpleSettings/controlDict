@@ -30,7 +30,7 @@ maxCo           1;          // typical stable range 0.5–1 for backward scheme
 maxDeltaT       0.01;         // optional safety cap, tune to your case
 
 writeControl    adjustableRunTime;  // pairs with adjustTimeStep — writes at real-time intervals, not fixed iteration counts
-writeInterval   0.05;               // in seconds now, not iterations — pick based on your period T once known, e.g. T/20
+writeInterval   0.5;               // in seconds now, not iterations — pick based on your period T once known, e.g. T/20
 
 purgeWrite      0;            // see note below — don't purge for this run
 writeFormat     ascii;

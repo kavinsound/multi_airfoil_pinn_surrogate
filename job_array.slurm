@@ -1,12 +1,13 @@
 #!/bin/bash
 
-#SBATCH --partition=main-redhat
+#SBATCH --partition=main
 #SBATCH --job-name=openfoam_batch
 #SBATCH --array=1-16%16
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=8G
-#SBATCH --time=00:40:00
-#SBATCH --output=logs/job_%A_%a.out
+#SBATCH --ntasks=6
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=4G
+#SBATCH --time=12:00:00
+#SBATCH --output=logs/%A/job_%a.out
 module purge
 
 source $HOME/.bashrc
@@ -21,5 +22,9 @@ TARGET_FOLDER=$(sed -n "${LINE_NUM}p" "$FOLDER_FILE")
 cd "generated_cases/$TARGET_FOLDER"
 
 python -u mesher.py
+
+chmod +x Allrun
+
+./Allrun
 
 # add the rest later
