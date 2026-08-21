@@ -78,10 +78,12 @@ PIMPLE
 
     residualControl
     {
-        p               1e-4;
-        U               1e-4;
-        "(k|omega|ReThetat|gammaInt)" 1e-4;
-    } 
+        "(p|U|k|omega|ReThetat|gammaInt)"
+        {
+            tolerance 1e-4;
+            relTol 0;
+        }
+    }  
 }
 
 
