@@ -86,17 +86,17 @@ relaxationFactors
 {
    fields
     {
-        p           0.3;
+        p           0.1;
     }
     equations
     {
-        Ux          0.7;
-        Uy          0.7;
-        U           0.7;
-        k           0.7;
-        omega       0.7;
-        ReThetat    0.7; // Lower this if it's stalling
-        gammaInt    0.7; // Same for intermittency
+        Ux          0.3;
+        Uy          0.3;
+        U           0.3;
+        k           0.3;
+        omega       0.3;
+        ReThetat    0.3; // Lower this if it's stalling
+        gammaInt    0.3; // Same for intermittency
     } 
 
 
