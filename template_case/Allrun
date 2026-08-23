@@ -9,12 +9,13 @@ python mesher.py
 
 python updateStatus.py 2
 
-bash Simplerun
+./Simplerun
 
 python updateStatus.py 3
 
-bash Pimplerun
+./Pimplerun
 
+foamToVTK -latestTime
 #add the data extraction...
 
 #------------------------------------------------------------------------------

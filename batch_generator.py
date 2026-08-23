@@ -104,16 +104,27 @@ def initializeSQLITE(id, sql_path):
 
 
 if __name__ == "__main__":
-   generator = SobolAirfoilGenerator(dat_path="./cleaned_foils/")
-   # print(generator.foil_list)
-   case_list_path = Path("case_list.txt")
-   n = 16 # number of cases
+    generator = SobolAirfoilGenerator(dat_path="./cleaned_foils/")
+    # print(generator.foil_list)
+    case_list_path = Path("case_list.txt")
 
-   generateBatch(generator, case_list_path, n)
+    import sys
 
-   cmd = ["bash", "submit.sh"]
-   subprocess.run( #run submit.sh to start the job array
+    if len(sys.argv) > 1:
+        try:
+            inp = int(sys.argv[1])
+            n = inp
+        except ValueError:
+            n = 16
+
+    else:
+        n = 16
+
+    generateBatch(generator, case_list_path, n)
+
+    cmd = ["bash", "submit.sh"]
+    subprocess.run( #run submit.sh to start the job array
     cmd,
     check=True
-   )
+    )
 

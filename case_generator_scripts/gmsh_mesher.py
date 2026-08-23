@@ -121,8 +121,25 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
         upper_tag = curve_te_tags[0]
         lower_tag = curve_te_tags[1]
 
-        gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsList", [upper_tag, lower_tag])
-        gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsSizesList", [3, 3])  # tune 3-6
+        # if upper_tag == lower_tag:
+        #     # Sharp TE: the upper/lower TE points were merged into one
+        #     # point in createFoil, so there's only a single fan point.
+        #     fan_points = [upper_tag]
+        #     fan_sizes = [8]
+        # else:
+        #     # Blunt TE: two distinct fan points, bumped up from the
+        #     # original [1, 1] to spread the corner transition over more
+        #     # elements instead of collapsing it into a sliver.
+        #     fan_points = [upper_tag, lower_tag]
+        #     fan_sizes = [8, 8]
+ 
+        # gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsList", fan_points)
+        # gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsSizesList", fan_sizes)
+ 
+
+
+        # gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsList", [upper_tag, lower_tag])
+        # gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsSizesList", [3, 3])  # tune 3-6
 
 
         gmsh.model.mesh.field.setAsBoundaryLayer(bl_tag) 
@@ -247,11 +264,73 @@ def createFoil(coords, lc, prefix):
     # Explicit straight line closes the loop across the blunt TE face
     te_line = gmsh.model.geo.addLine(te_lower_tag, te_upper_tag)
 
+    # curve_tags_foil = surface_spline
     curve_tags_foil = [surface_spline, te_line]
     curve_loop = gmsh.model.geo.addCurveLoop(curve_tags_foil)
     gmsh.model.addPhysicalGroup(1, curve_tags_foil, name=f"{prefix}")
 
     return curve_tags_foil, curve_loop, te_tags
+
+# def createFoil(coords, lc, prefix, first_layer_size, sharp_te_factor=3.0):
+#     """
+#     Build the airfoil curve loop.
+ 
+#     If the trailing-edge gap is smaller than `sharp_te_factor` times the
+#     intended first boundary-layer height, gmsh cannot physically fit a
+#     real blunt-TE layer into that gap without collapsing a corner cell
+#     to near-zero volume. In that case we merge the upper/lower TE points
+#     into a single point and build one closed spline with no TE face —
+#     this is what produced the 2e-10-volume / low-interpolation-weight
+#     faces before.
+ 
+#     Otherwise (a genuinely blunt TE), we keep the original blunt-TE
+#     handling: separate upper/lower TE points joined by a straight
+#     closing line.
+#     """
+#     if np.allclose(coords[0], coords[-1]):
+#         coords = coords[:-1]
+ 
+#     te_gap = np.linalg.norm(np.asarray(coords[0]) - np.asarray(coords[-1]))
+#     sharp_te = te_gap < sharp_te_factor * first_layer_size
+ 
+#     if sharp_te:
+#         # Merge the two TE points into their midpoint and drop them from
+#         # the interior point list so they aren't duplicated.
+#         merged_te = (np.asarray(coords[0]) + np.asarray(coords[-1])) / 2.0
+#         interior_coords = coords[1:-1]
+ 
+#         node_tags = [gmsh.model.geo.addPoint(merged_te[0], merged_te[1], 0, lc)]
+#         for x, y in interior_coords:
+#             node_tags.append(gmsh.model.geo.addPoint(x, y, 0, lc))
+ 
+#         te_tags = [node_tags[0], node_tags[0]]  # single fan point, both entries equal
+ 
+#         # Closed spline: repeat the first point tag at the end
+#         surface_spline = gmsh.model.geo.addSpline(node_tags + [node_tags[0]])
+#         curve_tags_foil = [surface_spline]
+ 
+#     else:
+#         node_tags = []
+#         for x, y in coords:
+#             node_tags.append(gmsh.model.geo.addPoint(x, y, 0, lc))
+ 
+#         te_upper_tag = node_tags[0]
+#         te_lower_tag = node_tags[-1]
+#         te_tags = [te_upper_tag, te_lower_tag]
+ 
+#         # Spline over the airfoil surface ONLY — no wraparound repeat here
+#         surface_spline = gmsh.model.geo.addSpline(node_tags)
+ 
+#         # Explicit straight line closes the loop across the blunt TE face
+#         te_line = gmsh.model.geo.addLine(te_lower_tag, te_upper_tag)
+ 
+#         curve_tags_foil = [surface_spline, te_line]
+ 
+#     curve_loop = gmsh.model.geo.addCurveLoop(curve_tags_foil)
+#     gmsh.model.addPhysicalGroup(1, curve_tags_foil, name=f"{prefix}")
+ 
+#     return curve_tags_foil, curve_loop, te_tags
+
 
 
 if __name__ == "__main__":
