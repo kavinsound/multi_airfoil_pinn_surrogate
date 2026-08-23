@@ -37,7 +37,7 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
     curve_loops = []
     te_tags = []
     for i, foil in enumerate(airfoil_list):
-        tag, loop, te_tag = createFoil(foil, lc_airfoil, f"airfoil{i+1}", y_plus_list[i]) 
+        tag, loop, te_tag = createFoil(foil, lc_airfoil, f"airfoil{i+1}") 
         curve_tags.append(tag)
         curve_loops.append(loop)
         te_tags.append(te_tag)
@@ -138,8 +138,8 @@ def createMesh(airfoil_list, y_plus_list, target_case_dir):
  
 
 
-        gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsList", [upper_tag, lower_tag])
-        gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsSizesList", [3, 3])  # tune 3-6
+        # gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsList", [upper_tag, lower_tag])
+        # gmsh.model.mesh.field.setNumbers(bl_tag, "FanPointsSizesList", [3, 3])  # tune 3-6
 
 
         gmsh.model.mesh.field.setAsBoundaryLayer(bl_tag) 
