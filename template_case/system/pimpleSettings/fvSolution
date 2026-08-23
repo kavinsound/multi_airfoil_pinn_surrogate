@@ -69,8 +69,8 @@ solvers
 
 PIMPLE
 {
-    nOuterCorrectors     2;      
-    nCorrectors          2;      
+    nOuterCorrectors     1;      
+    nCorrectors          1;      
     nNonOrthogonalCorrectors 1;
 
     pRefCell             0;
@@ -81,7 +81,7 @@ PIMPLE
         "(p|U|k|omega|ReThetat|gammaInt)"
         {
             tolerance 1e-4;
-            relTol 0;
+            relTol 0.05;
         }
     }  
 }

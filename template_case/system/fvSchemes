@@ -30,10 +30,10 @@ divSchemes
     default         none;
 
     div(phi,U)      Gauss LUST grad(U); 
-    div(phi,k)      Gauss upwind;
-    div(phi,omega)  Gauss upwind;
-    div(phi,gammaInt)  Gauss upwind;
-    div(phi,ReThetat) Gauss upwind;
+    div(phi,k)      bounded Gauss upwind;
+    div(phi,omega)  bounded Gauss upwind;
+    div(phi,gammaInt)  bounded Gauss upwind;
+    div(phi,ReThetat) bounded Gauss upwind;
     div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
 
