@@ -13,7 +13,7 @@ python updateStatus.py 2
 
 # python updateStatus.py 3
 
-# ./Pimplerun     just simplefoam now..
+# ./Pimplerun
 
 foamToVTK -latestTime
 #add the data extraction...
