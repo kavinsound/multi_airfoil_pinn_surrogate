@@ -21,11 +21,11 @@ def readCase(path):
     boundary_data = {}
 
     for key in internalMesh.cell_data.keys():
-        if ("Mean" in key or "Prime2Mean" in key) and "wallShearStress" not in key and "Cp" not in key:
+        if key in ["gammaInt", "k", "nut", "omega", "p", "phi", "ReThetat", "U"]:
             internal_data[key] = internalMesh.cell_data[key]
 
     for key in boundary[0][2].point_data.keys():
-        if (key in ["wallShearStressMean", "CpMean"]):
+        if (key in ["wallShearStress", "Cp"]):
             boundary_data[key] = boundary[0][2].point_data[key]
 
     #converting to 2d
@@ -36,8 +36,7 @@ def readCase(path):
     for name, array in internal_data:
         internal_data[name] = array[internal_mask]
 
-    internal_data["UMean"] = internal_data["UMean"][:, :2]
-    internal_data["UPrime2Mean"] = internal_data["UPrime2Mean"][:, [0, 1, 3]] #remove z directions
+    internal_data["U"] = internal_data["U"][:, :2]
 
     boundary_mask = np.isclose(boundary_coords[:, 2], 0)
     boundary_coords = boundary_coords[boundary_mask, :2]
@@ -45,7 +44,7 @@ def readCase(path):
     for name, array in boundary_data:
         boundary_data[name] = array[boundary_mask]
 
-    boundary_data["wallShearStressMean"] = boundary_data["wallShearStressMean"][:, :2]
+    boundary_data["wallShearStress"] = boundary_data["wallShearStress"][:, :2]
 
     from scipy.spatial import KDTree
     from matplotlib.path import Path as geoPath
