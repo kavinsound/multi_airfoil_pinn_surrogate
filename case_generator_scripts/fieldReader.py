@@ -85,6 +85,8 @@ def readCase(path, h5_file_path):
 
 
 if __name__ == "__main__":
-    sample_target = "../sample_case/"
+    sample_target = "../generated_cases/case_1"
 
-    readCase(sample_target)
+    h5_file = Path("../sample_h5.h5")
+
+    readCase(sample_target, h5_file)

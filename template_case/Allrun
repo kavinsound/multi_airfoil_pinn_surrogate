@@ -15,9 +15,6 @@ echo "solving..."
 
 ./Simplerun
 
-# python updateStatus.py 3
-
-# ./Pimplerun
 
 foamToVTK -latestTime
 #add the data extraction...

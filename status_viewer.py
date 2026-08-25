@@ -1,6 +1,6 @@
 import sqlite3
 from pathlib import Path
-STAGE_MAP = {0: "Initialized", 1: "Meshing", 2: "SimpleFoam Solve", 3: "PimpleFoam Solve", 4: "Reading data", 5: "Completed"}
+STAGE_MAP = {0: "Initialized", 1: "Meshing", 2: "SimpleFoam Solve", 3: "Reading data", 4: "Completed"}
 
 def getCounts(db_path="job_status.db"):
 
