@@ -20,9 +20,13 @@ def readCase(path, h5_file_path):
     boundary_coords = boundary[0][2].points
     boundary_data = {}
 
+    internalMesh = internalMesh.compute_cell_sizes()
+
     for key in internalMesh.cell_data.keys():
-        if key in ["gammaInt", "k", "nut", "omega", "p", "phi", "ReThetat", "U"]:
+        if key in ["gammaInt", "k", "nut", "omega", "p", "phi", "ReThetat", "U", "Volume"]:
             internal_data[key] = internalMesh.cell_data[key]
+
+    internal_data["Area"] = internal_data.pop("Volume")
 
     for key in boundary[0][2].point_data.keys():
         if (key in ["wallShearStress", "Cp"]):
