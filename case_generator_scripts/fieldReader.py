@@ -4,9 +4,9 @@ import numpy as np
 import h5py
 
 
-def readCase(path):
+def readCase(path, h5_file_path):
     case_path = Path(path)
-
+    case_name = case_path.stem
     folders = [p for p in (case_path / "VTK").iterdir() if p.is_dir()]
 
     folder = folders[0]
@@ -33,7 +33,7 @@ def readCase(path):
     internal_mask = np.isclose(internal_coords[:, 2], 0)
     internal_coords = internal_coords[internal_mask, :2]
 
-    for name, array in internal_data:
+    for name, array in internal_data.items():
         internal_data[name] = array[internal_mask]
 
     internal_data["U"] = internal_data["U"][:, :2]
@@ -41,7 +41,7 @@ def readCase(path):
     boundary_mask = np.isclose(boundary_coords[:, 2], 0)
     boundary_coords = boundary_coords[boundary_mask, :2]
 
-    for name, array in boundary_data:
+    for name, array in boundary_data.items():
         boundary_data[name] = array[boundary_mask]
 
     boundary_data["wallShearStress"] = boundary_data["wallShearStress"][:, :2]
@@ -60,6 +60,28 @@ def readCase(path):
     sdf = distances.astype(np.float32)
 
     #add the hd5 logic here. create organized groups
+
+    with h5py.File(h5_file_path, "a") as f:
+        # Create or clear the group for this specific case
+        if case_name in f:
+            del f[case_name]
+        
+        case_grp = f.create_group(case_name)
+        
+        # --- Internal Data Group ---
+        internal_grp = case_grp.create_group("internal")
+        internal_grp.create_dataset("coords", data=internal_coords, dtype=np.float32)
+        internal_grp.create_dataset("sdf", data=sdf, dtype=np.float32)
+        
+        for name, array in internal_data.items():
+            internal_grp.create_dataset(name, data=array)
+
+        # --- Boundary Data Group ---
+        boundary_grp = case_grp.create_group("boundary")
+        boundary_grp.create_dataset("coords", data=boundary_coords, dtype=np.float32)
+        
+        for name, array in boundary_data.items():
+            boundary_grp.create_dataset(name, data=array)
 
 
 if __name__ == "__main__":

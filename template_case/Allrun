@@ -5,9 +5,13 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 python updateStatus.py 1
 
+echo "meshing..."
+
 python mesher.py
 
 python updateStatus.py 2
+
+echo "solving..."
 
 ./Simplerun
 
