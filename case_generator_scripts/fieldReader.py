@@ -30,7 +30,11 @@ def readCase(path, h5_file_path):
 
     #converting to 2d
 
-    internal_mask = np.isclose(internal_coords[:, 2], 0)
+    # internal_mask = np.isclose(internal_coords[:, 2], 0)
+    # internal_coords = internal_coords[internal_mask, :2]
+
+    _, internal_mask = np.unique(internal_coords, axis=0, return_index=True)
+
     internal_coords = internal_coords[internal_mask, :2]
 
     for name, array in internal_data.items():
@@ -85,8 +89,9 @@ def readCase(path, h5_file_path):
 
 
 if __name__ == "__main__":
-    sample_target = "../generated_cases/case_1"
+    for i in range(1,5):
+        sample_target = f"../generated_cases/case_{i}"
 
-    h5_file = Path("../sample_h5.h5")
+        h5_file = Path("../sample_h5.h5")
 
-    readCase(sample_target, h5_file)
+        readCase(sample_target, h5_file)
