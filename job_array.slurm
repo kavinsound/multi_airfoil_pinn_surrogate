@@ -21,8 +21,6 @@ TARGET_FOLDER=$(sed -n "${LINE_NUM}p" "$FOLDER_FILE")
 
 cd "generated_cases/$TARGET_FOLDER"
 
-python -u mesher.py
-
 chmod +x Allrun
 
 ./Allrun
