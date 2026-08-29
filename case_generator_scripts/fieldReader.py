@@ -7,6 +7,7 @@ import h5py
 def readCase(path, h5_file_path):
     case_path = Path(path)
     case_name = case_path.stem
+    print(f"reading {case_name}...")
     folders = [p for p in (case_path / "VTK").iterdir() if p.is_dir()]
 
     folder = folders[0]
@@ -66,9 +67,19 @@ def readCase(path, h5_file_path):
         if match:
             vel = float(match.group(1))
 
-    Cf = np.linalg.norm(boundary_data["wallShearStres"], axis=1) / (0.5 * vel**2)
+    Cf = np.linalg.norm(boundary_data["wallShearStress"], axis=1) / (0.5 * vel**2)
     boundary_data["Cf"] = Cf
 
+    #drag coefficients
+
+    coeff_file_path = case_path / "postProcessing" / "forceCoeffs" / "0" / "coefficient.dat"
+
+    data = np.loadtxt(coeff_file_path, dtype=np.float32)
+    Cd, Cl = data[:, 1], data[:, 4]
+
+    Cd_avg, Cl_avg = np.mean(Cd[-500:]), np.mean(Cl[-500:])
+
+    print(Cd_avg, Cl_avg)
 
     from scipy.spatial import KDTree
     from matplotlib.path import Path as geoPath
@@ -107,6 +118,12 @@ def readCase(path, h5_file_path):
         for name, array in boundary_data.items():
             boundary_grp.create_dataset(name, data=array)
 
+        coeff_grp = case_grp.create_group("coeffs")
+        coeff_grp.create_dataset("Cd", data=Cd_avg, dtype=np.float32)
+        coeff_grp.create_dataset("Cl", data=Cl_avg, dtype=np.float32)
+
+
+    print("-" * 16)
 
 if __name__ == "__main__":
     for i in range(1,5):
