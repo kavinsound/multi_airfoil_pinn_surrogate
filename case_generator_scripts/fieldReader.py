@@ -15,45 +15,46 @@ def readCase(path, h5_file_path):
     internalMesh = pv.read(folder / "internal.vtu")
     boundary = pv.read(folder / "boundary.vtm")
 
-    internal_coords = internalMesh.cell_centers().points
+    cell_centers = internalMesh.cell_centers().points 
+
+    # Get coordinates (2D)
+    internal_coords = cell_centers[:, :2]  # Drop z coordinate
+
+    # Get connectivity (PolyData stores faces, not cells)
+
+    # --- Map cell data from 3D to 2D ---
     internal_data = {}
 
-    slice_mesh = internalMesh.slice(normal='z', origin=(0, 0, 0))
-    slice_mesh.clean(inplace=True)
-
-    # Get 2D coordinates (drop z)
-    internal_coords = slice_mesh.points[:, :2]
-
-    # Get connectivity
-    cells = slice_mesh.cells
-    cell_offsets = slice_mesh.cell_offsets
-
-    # Map cell data from 3D to 2D slice
-    # PyVista's slice interpolates point_data, but we need cell_data
-    # For cell_data, we need to use cell centers
-    internal_data = {}
-    
-    internalMesh = internalMesh.compute_cell_sizes()
-
+    # Find cells in the middle z-plane
 
     for key in internalMesh.cell_data.keys():
-        if key in ["gammaInt", "k", "nut", "omega", "p", "phi", "U", "Volume"]:
-            # Get cell centers of the 3D mesh
-            cell_centers = internalMesh.cell_centers().points
+        if key in ["gammaInt", "k", "nut", "omega", "p", "phi", "ReThetat", "U", "Volume"]:
+            # Get data for cells in the middle plane
+            data = internalMesh.cell_data[key]
             
-            # Find cells in the middle z-plane
-            z_center = np.mean(cell_centers[:, 2])
-            center_mask = np.abs(cell_centers[:, 2] - z_center) < 1e-6
-            
-            # Get the data for cells in the middle plane
-            internal_data[key] = internalMesh.cell_data[key][center_mask]
-            
-            # For U, keep only x,y components
             if key == "U":
-                internal_data[key] = internal_data[key][:, :2]
+                # Keep only x,y components
+                data = data[:, :2]
+            
+            internal_data[key] = data
 
+    # Rename Volume to Area (since it's now 2D)
+    if "Volume" in internal_data:
+        internal_data["Area"] = internal_data.pop("Volume")
     
-    internal_data["Area"] = internal_data.pop("Volume")
+    from scipy.spatial import Delaunay
+    tri = Delaunay(internal_coords)
+    
+    # Build edge list from triangulation
+    edges = set()
+    for simplex in tri.simplices:
+        for i in range(len(simplex)):
+            for j in range(i+1, len(simplex)):
+                edge = tuple(sorted([simplex[i], simplex[j]]))
+                edges.add(edge)
+    
+    edges = np.array(list(edges), dtype=np.int32)
+
 
     boundary_coords = boundary[0][2].points
     boundary_data = {}
@@ -110,7 +111,7 @@ def readCase(path, h5_file_path):
 
     Cd_avg, Cl_avg = np.mean(Cd[-500:]), np.mean(Cl[-500:])
 
-    print(Cd_avg, Cl_avg)
+    # print(Cd_avg, Cl_avg)
 
     from scipy.spatial import KDTree
     from matplotlib.path import Path as geoPath
@@ -137,8 +138,10 @@ def readCase(path, h5_file_path):
         # --- Internal Data Group ---
         internal_grp = case_grp.create_group("internal")
         internal_grp.create_dataset("coords", data=internal_coords, dtype=np.float32)
-        internal_grp.create_dataset("cells", data=cells, dtype=np.float32)
-        internal_grp.create_dataset("cell_offsets", data=cell_offsets, dtype=np.float32)
+        # internal_grp.create_dataset("cells", data=cells, dtype=np.float32)
+        # internal_grp.create_dataset("cell_offsets", data=cell_offsets, dtype=np.float32)
+
+        internal_grp.create_dataset("edges", data=edges, dtype=np.int32) #connectivity data
 
         internal_grp.create_dataset("sdf", data=sdf, dtype=np.float32)
         
@@ -157,7 +160,7 @@ def readCase(path, h5_file_path):
         coeff_grp.create_dataset("Cl", data=Cl_avg, dtype=np.float32)
 
 
-    print("-" * 16)
+    # print("-" * 16)
 
 if __name__ == "__main__":
     for i in range(1,5):
