@@ -18,16 +18,47 @@ def readCase(path, h5_file_path):
     internal_coords = internalMesh.cell_centers().points
     internal_data = {}
 
+    slice_mesh = internalMesh.slice(normal='z', origin=(0, 0, 0))
+    slice_mesh.clean(inplace=True)
+
+    # Get 2D coordinates (drop z)
+    internal_coords = slice_mesh.points[:, :2]
+
+    # Get connectivity
+    cells = slice_mesh.cells
+    cell_offsets = slice_mesh.cell_offsets
+
+    # Map cell data from 3D to 2D slice
+    # PyVista's slice interpolates point_data, but we need cell_data
+    # For cell_data, we need to use cell centers
+    internal_data = {}
+    
+    internalMesh = internalMesh.compute_cell_sizes()
+
+
+    for key in internalMesh.cell_data.keys():
+        if key in ["gammaInt", "k", "nut", "omega", "p", "phi", "U", "Volume"]:
+            # Get cell centers of the 3D mesh
+            cell_centers = internalMesh.cell_centers().points
+            
+            # Find cells in the middle z-plane
+            z_center = np.mean(cell_centers[:, 2])
+            center_mask = np.abs(cell_centers[:, 2] - z_center) < 1e-6
+            
+            # Get the data for cells in the middle plane
+            internal_data[key] = internalMesh.cell_data[key][center_mask]
+            
+            # For U, keep only x,y components
+            if key == "U":
+                internal_data[key] = internal_data[key][:, :2]
+
+    
+    internal_data["Area"] = internal_data.pop("Volume")
+
     boundary_coords = boundary[0][2].points
     boundary_data = {}
 
-    internalMesh = internalMesh.compute_cell_sizes()
 
-    for key in internalMesh.cell_data.keys():
-        if key in ["gammaInt", "k", "nut", "omega", "p", "phi", "ReThetat", "U", "Volume"]:
-            internal_data[key] = internalMesh.cell_data[key]
-
-    internal_data["Area"] = internal_data.pop("Volume")
 
     for key in boundary[0][2].point_data.keys():
         if (key in ["wallShearStress", "Cp"]):
@@ -38,14 +69,14 @@ def readCase(path, h5_file_path):
     # internal_mask = np.isclose(internal_coords[:, 2], 0)
     # internal_coords = internal_coords[internal_mask, :2]
 
-    _, internal_mask = np.unique(internal_coords, axis=0, return_index=True)
+    # _, internal_mask = np.unique(internal_coords, axis=0, return_index=True)
 
-    internal_coords = internal_coords[internal_mask, :2]
+    # internal_coords = internal_coords[internal_mask, :2]
 
-    for name, array in internal_data.items():
-        internal_data[name] = array[internal_mask]
+    # for name, array in internal_data.items():
+    #     internal_data[name] = array[internal_mask]
 
-    internal_data["U"] = internal_data["U"][:, :2]
+    # internal_data["U"] = internal_data["U"][:, :2]
 
     boundary_mask = np.isclose(boundary_coords[:, 2], 0)
     boundary_coords = boundary_coords[boundary_mask, :2]
@@ -106,6 +137,9 @@ def readCase(path, h5_file_path):
         # --- Internal Data Group ---
         internal_grp = case_grp.create_group("internal")
         internal_grp.create_dataset("coords", data=internal_coords, dtype=np.float32)
+        internal_grp.create_dataset("cells", data=cells, dtype=np.float32)
+        internal_grp.create_dataset("cell_offsets", data=cell_offsets, dtype=np.float32)
+
         internal_grp.create_dataset("sdf", data=sdf, dtype=np.float32)
         
         for name, array in internal_data.items():
