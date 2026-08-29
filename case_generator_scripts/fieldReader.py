@@ -54,6 +54,22 @@ def readCase(path, h5_file_path):
 
     boundary_data["wallShearStress"] = boundary_data["wallShearStress"][:, :2]
 
+    #add wallshearstress to Cf conversion here
+
+    velocity_file = case_path / "0.orig" / "include" / "initialConditions"
+    import re
+
+    with open(velocity_file, "r") as f:
+
+        content = f.read()
+        match = re.search(r"velocity\s+([\d.]+)", content)
+        if match:
+            vel = float(match.group(1))
+
+    Cf = np.linalg.norm(boundary_data["wallShearStres"], axis=1) / (0.5 * vel**2)
+    boundary_data["Cf"] = Cf
+
+
     from scipy.spatial import KDTree
     from matplotlib.path import Path as geoPath
 
