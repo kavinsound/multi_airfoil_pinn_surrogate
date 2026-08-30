@@ -33,7 +33,7 @@ class MeshH5Dataset(Dataset):
     ):
         
         self.file_path = Path(file_path)
-        self.fields = fields or ['p', 'U']
+        self.fields = fields or ['p', 'U', 'ReThetat', 'gammaInt', 'k', 'nut', 'omega']
         self.include_coords = include_coords
         self.include_sdf = include_sdf
         self.include_edges = include_edges
@@ -267,70 +267,76 @@ class MeshDataLoader:
         return dataloader
 
 
-def get_dataloader(
-    file_path: Union[str, Path],
-    batch_size: int = 32,
-    train_split: float = 0.8,
-    val_split: float = 0.1,
-    test_split: float = 0.1,
-    random_seed: int = 42,
+def create_dataset(
+    h5_file_path: Union[str, Path],
+    fields: Optional[List[str]] = None,
+    include_coords: bool = True,
+    include_sdf: bool = True,
+    include_edges: bool = True,
+    include_boundary: bool = True,
+    include_coeffs: bool = True,
+    normalize_coords: bool = True,
+    normalize_fields: bool = True,
+    cache_data: bool = False,
     **kwargs
-) -> Dict[str, DataLoader]:
+) -> MeshH5Dataset:
     
-    # Create full dataset to get case names
-    dataset = MeshH5Dataset(file_path=file_path, **kwargs)
-    case_names = dataset.case_names
+    return MeshH5Dataset(
+        file_path=h5_file_path,
+        fields=fields,
+        include_coords=include_coords,
+        include_sdf=include_sdf,
+        include_edges=include_edges,
+        include_boundary=include_boundary,
+        include_coeffs=include_coeffs,
+        normalize_coords=normalize_coords,
+        normalize_fields=normalize_fields,
+        cache_data=cache_data,
+        **kwargs
+    )
+
+
+def create_dataloader(
+    h5_file_path: Union[str, Path],
+    batch_size: int = 32,
+    shuffle: bool = True,
+    num_workers: int = 4,
+    pin_memory: bool = True,
+    drop_last: bool = False,
+    fields: Optional[List[str]] = None,
+    include_coords: bool = True,
+    include_sdf: bool = True,
+    include_edges: bool = True,
+    include_boundary: bool = True,
+    include_coeffs: bool = True,
+    normalize_coords: bool = True,
+    normalize_fields: bool = True,
+    cache_data: bool = False,
+    **kwargs
+) -> DataLoader:
     
-    # Shuffle and split
-    np.random.seed(random_seed)
-    indices = np.random.permutation(len(case_names))
-    
-    train_end = int(train_split * len(indices))
-    val_end = int((train_split + val_split) * len(indices))
-    
-    train_indices = indices[:train_end]
-    val_indices = indices[train_end:val_end]
-    test_indices = indices[val_end:]
-    
-    # Create subsets
-    from torch.utils.data import Subset
-    train_dataset = Subset(dataset, train_indices)
-    val_dataset = Subset(dataset, val_indices)
-    test_dataset = Subset(dataset, test_indices)
-    
-    # Create dataloaders
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=kwargs.get('num_workers', 4),
-        pin_memory=kwargs.get('pin_memory', True),
-        drop_last=True
+    dataset = create_dataset(
+        h5_file_path=h5_file_path,
+        fields=fields,
+        include_coords=include_coords,
+        include_sdf=include_sdf,
+        include_edges=include_edges,
+        include_boundary=include_boundary,
+        include_coeffs=include_coeffs,
+        normalize_coords=normalize_coords,
+        normalize_fields=normalize_fields,
+        cache_data=cache_data
     )
     
-    val_loader = DataLoader(
-        val_dataset,
+    return DataLoader(
+        dataset,
         batch_size=batch_size,
-        shuffle=False,
-        num_workers=kwargs.get('num_workers', 4),
-        pin_memory=kwargs.get('pin_memory', True),
-        drop_last=False
+        shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        drop_last=drop_last,
+        **kwargs
     )
-    
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=kwargs.get('num_workers', 4),
-        pin_memory=kwargs.get('pin_memory', True),
-        drop_last=False
-    )
-    
-    return {
-        'train': train_loader,
-        'val': val_loader,
-        'test': test_loader
-    }
 
 
 def inspect_hdf5_file(file_path: Union[str, Path]) -> Dict:

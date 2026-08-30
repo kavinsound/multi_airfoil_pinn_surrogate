@@ -99,7 +99,7 @@ def readCase(path, h5_file_path):
         if match:
             vel = float(match.group(1))
 
-    Cf = np.linalg.norm(boundary_data["wallShearStress"], axis=1) / (0.5 * vel**2)
+    Cf = np.linalg.norm(boundary_data.pop("wallShearStress"), axis=1) / (0.5 * vel**2)
     boundary_data["Cf"] = Cf
 
     #drag coefficients
