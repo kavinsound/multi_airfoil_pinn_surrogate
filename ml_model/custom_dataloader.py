@@ -338,52 +338,141 @@ def create_dataloader(
         **kwargs
     )
 
-
-def inspect_hdf5_file(file_path: Union[str, Path]) -> Dict:
+def create_train_val_test_loaders(
+    h5_file_path: Union[str, Path],
+    batch_size: int = 32,
+    train_split: float = 0.8,
+    val_split: float = 0.1,
+    test_split: float = 0.1,
+    random_seed: int = 42,
+    num_workers: int = 4,
+    pin_memory: bool = True,
+    fields: Optional[List[str]] = None,
+    include_coords: bool = True,
+    include_sdf: bool = True,
+    include_edges: bool = True,
+    include_boundary: bool = True,
+    include_coeffs: bool = True,
+    normalize_coords: bool = True,
+    normalize_fields: bool = True,
+    cache_data: bool = False,
+    **kwargs
+) -> Dict[str, DataLoader]:
     
-    file_path = Path(file_path)
+    dataset = create_dataset(
+        h5_file_path=h5_file_path,
+        fields=fields,
+        include_coords=include_coords,
+        include_sdf=include_sdf,
+        include_edges=include_edges,
+        include_boundary=include_boundary,
+        include_coeffs=include_coeffs,
+        normalize_coords=normalize_coords,
+        normalize_fields=normalize_fields,
+        cache_data=cache_data
+    )
+    
+    case_names = dataset.case_names
+    
+    np.random.seed(random_seed)
+    indices = np.random.permutation(len(case_names))
+    
+    train_end = int(train_split * len(indices))
+    val_end = int((train_split + val_split) * len(indices))
+    
+    train_indices = indices[:train_end]
+    val_indices = indices[train_end:val_end]
+    test_indices = indices[val_end:]
+    
+    from torch.utils.data import Subset
+    
+    train_dataset = Subset(dataset, train_indices)
+    val_dataset = Subset(dataset, val_indices)
+    test_dataset = Subset(dataset, test_indices)
+    
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        drop_last=True,
+        **kwargs
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        drop_last=False,
+        **kwargs
+    )
+    
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        drop_last=False,
+        **kwargs
+    )
+    
+    return {
+        'train': train_loader,
+        'val': val_loader,
+        'test': test_loader
+    }
+
+
+def quick_inspect(h5_file_path: Union[str, Path]) -> None:
+   
+    file_path = Path(h5_file_path)
     
     if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+        print(f"❌ File not found: {file_path}")
+        return
     
-    info = {}
+    print(f"\n{'='*70}")
+    print(f"📁 HDF5 File: {file_path.name}")
+    print(f"{'='*70}")
     
     with h5py.File(file_path, 'r') as f:
-        info['cases'] = []
+        cases = list(f.keys())
+        print(f"Total cases: {len(cases)}\n")
         
-        for case_name in f.keys():
-            case_info = {'name': case_name, 'groups': {}}
+        for case_name in cases:
+            print(f"📂 Case: {case_name}")
             
-            for group_name in f[case_name].keys():
-                group_info = {'datasets': []}
-                
-                for dataset_name in f[f'{case_name}/{group_name}'].keys():
-                    dataset = f[f'{case_name}/{group_name}/{dataset_name}']
-                    group_info['datasets'].append({
-                        'name': dataset_name,
-                        'shape': dataset.shape,
-                        'dtype': dataset.dtype
-                    })
-                
-                case_info['groups'][group_name] = group_info
+            # Internal group
+            if 'internal' in f[case_name]:
+                internal_grp = f[case_name]['internal']
+                print(f"  ├── internal/")
+                for key in internal_grp.keys():
+                    shape = internal_grp[key].shape
+                    dtype = internal_grp[key].dtype
+                    print(f"  │     ├── {key}: {shape}, {dtype}")
             
-            info['cases'].append(case_info)
-    
-    # Print summary
-    print(f"\n{'='*60}")
-    print(f"HDF5 File: {file_path.name}")
-    print(f"{'='*60}")
-    print(f"Total cases: {len(info['cases'])}\n")
-    
-    for case_info in info['cases']:
-        print(f"📂 Case: {case_info['name']}")
-        for group_name, group_info in case_info['groups'].items():
-            print(f"  ├── {group_name}/")
-            for dataset in group_info['datasets']:
-                shape_str = 'x'.join(str(d) for d in dataset['shape'])
-                print(f"  │     ├── {dataset['name']}: shape ({shape_str}), dtype {dataset['dtype']}")
-        print()
-    
-    return info
+            # Boundary group
+            if 'boundary' in f[case_name]:
+                boundary_grp = f[case_name]['boundary']
+                print(f"  ├── boundary/")
+                for key in boundary_grp.keys():
+                    shape = boundary_grp[key].shape
+                    dtype = boundary_grp[key].dtype
+                    print(f"  │     ├── {key}: {shape}, {dtype}")
+            
+            # Coefficients group
+            if 'coeffs' in f[case_name]:
+                coeff_grp = f[case_name]['coeffs']
+                print(f"  └── coeffs/")
+                for key in coeff_grp.keys():
+                    value = coeff_grp[key][()]
+                    print(f"        ├── {key}: {value}")
+            
+            print()
 
-
+if __name__ == "__main__":
+    quick_inspect(Path("../sample_h5.h5"))
