@@ -172,7 +172,7 @@ class MeshH5Dataset(Dataset):
             
             # Load coefficients
             if self.include_coeffs:
-                coeff_grp = case_grp['coeffs']
+                coeff_grp = case_grp['constant']
                 for key in coeff_grp.keys():
                     data[key] = coeff_grp[key][()].astype(np.float32)
         
@@ -465,8 +465,8 @@ def quick_inspect(h5_file_path: Union[str, Path]) -> None:
                     print(f"  │     ├── {key}: {shape}, {dtype}")
             
             # Coefficients group
-            if 'coeffs' in f[case_name]:
-                coeff_grp = f[case_name]['coeffs']
+            if 'constant' in f[case_name]:
+                coeff_grp = f[case_name]['constant']
                 print(f"  └── coeffs/")
                 for key in coeff_grp.keys():
                     value = coeff_grp[key][()]
