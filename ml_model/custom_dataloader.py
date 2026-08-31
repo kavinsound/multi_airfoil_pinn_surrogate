@@ -23,7 +23,7 @@ class MeshH5Dataset(Dataset):
         self.h5_path = h5_path
         self.internal_fields = ['p', 'U', 'k', 'omega', 'nut', 'gammaInt', 'ReThetat'] 
         self.boundary_fields = ['Cp', 'Cf']
-        self.constants = ['Cd', 'Cl', 'Re']
+        self.constants = ['Cd', 'Cl', 'log_Re']
 
         with h5py.File(self.h5_path, 'r') as f:
             self.n = len(f.keys())
@@ -62,12 +62,12 @@ class MeshH5Dataset(Dataset):
             coeffs_data = case['constant']
             data['Cd'] = torch.tensor(coeffs_data['Cd'], dtype=torch.float32).unsqueeze(0)
             data['Cl'] = torch.tensor(coeffs_data['Cl'], dtype=torch.float32).unsqueeze(0)
-            data['Re'] = torch.tensor(coeffs_data['Re'], dtype=torch.float32).unsqueeze(0)
+            data['log_Re'] = torch.tensor(coeffs_data['log_Re'], dtype=torch.float32).unsqueeze(0)
 
 
         return data 
 
-class RobustFieldNormalizer:
+class FieldNormalizer:
     
     def __init__(self, fit_dataset: Optional[MeshH5Dataset] = None, save_path: Union[str, Path] = 'data_stats'):
         self.stats = {}
@@ -80,7 +80,7 @@ class RobustFieldNormalizer:
     def fit(self, dataset: MeshH5Dataset, verbose: bool = True):
         
         # Get all fields that need normalization
-        fields_to_normalize = ['internal_coords', 'sdf', 'boundary_coords', *dataset.fields, *dataset.boundary_fields]
+        fields_to_normalize = ['internal_coords', 'sdf', 'boundary_coords', *dataset.internal_fields, *dataset.boundary_fields, *dataset.constants]
         
         # Collect data for each field
         field_data = {field: [] for field in fields_to_normalize}
@@ -133,7 +133,7 @@ class RobustFieldNormalizer:
         self.fitted = True
         
         if verbose:
-            print("\n📊 Normalization Statistics Summary:")
+            print("\nNormalization Statistics Summary:")
             print("-" * 70)
             for field, stats in stats_summary.items():
                 print(f"\n{field}:")
@@ -147,9 +147,7 @@ class RobustFieldNormalizer:
                 if stats['iqr'] > 0:
                     print(f"  Range/ IQR: {stats['max'] - stats['min']:.2f} / {stats['iqr']:.2f}")
         
-        print("\n✅ Robust normalization statistics computed successfully!")
         print(f"   Fields normalized: {len(field_data)}")
-        print("   NO CLIPPING applied - all physical information preserved")
         return self
     
     def normalize(self, data: torch.Tensor, field: str) -> torch.Tensor:
@@ -200,9 +198,7 @@ class RobustFieldNormalizer:
             json.dump({
                 'stats': stats_to_save,
                 'fitted': self.fitted,
-                'field_shapes': self.field_shapes,
-                'method': 'robust_median_iqr',
-                'description': 'Robust normalization using median and IQR. NO CLIPPING applied.'
+                'field_shapes': self.field_shapes
             }, f, indent=2)
         
         # Also save as pickle for faster loading
@@ -213,13 +209,12 @@ class RobustFieldNormalizer:
                 'field_shapes': self.field_shapes
             }, f)
         
-        print(f"✅ Normalization stats saved to:")
+        print(f"Normalization stats saved to:")
         print(f"   Pickle: {path}")
         print(f"   JSON:   {json_path}")
         return self
     
     def load(self):
-        """Load normalization statistics from file"""
         path = Path(self.save_path)
         
         # Try pickle first
@@ -247,13 +242,11 @@ class RobustFieldNormalizer:
             else:
                 raise FileNotFoundError(f"No normalization file found at {path} or {json_path}")
         
-        print(f"✅ Normalization stats loaded from {path}")
+        print(f"Normalization stats loaded from {path}")
         print(f"   Method: Robust (Median/IQR)")
-        print("   NO CLIPPING - physical information preserved")
         return self
     
     def get_stats_summary(self, field: str) -> Dict:
-        """Get a summary of statistics for a field"""
         if not self.fitted:
             return {}
         
@@ -271,15 +264,46 @@ class RobustFieldNormalizer:
             'shape': self.field_shapes.get(field, 'unknown')
         }
 
+class normalizedMeshH5Dataset(MeshH5Dataset):
+
+    def __init__(self, h5_path: Union[str, Path], save_path: Union[str, Path]="data_stats", load: bool=False):
+        super().__init__(h5_path=h5_path)
+
+        self.h5_path = h5_path
+        self.save_path = save_path
+        self.load = load
+
+        self.normalizer=FieldNormalizer(save_path=save_path)
 
 
+        if self.load:
+            self.normalizer.load()
+        else:
+            self.normalizer.fit(dataset=MeshH5Dataset(h5_path=self.h5_path))
+            self.normalizer.save()
 
-class MeshDataLoader:
-    
-    
-    ...
+        def __len__(self) -> int:
+            return super().__len__()
 
 
+        def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+
+            raw = super().__getitem__(idx)
+
+            normalized = {}
+            for key, tensor in raw.items():
+                normalized[key] = self.normalizer.normalize(tensor, key)
+
+            return normalized
+
+
+        def denormalize(self, item: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+
+            raw = {}
+            for key, tensor in item.items():
+                raw[key] = self.normalizer.denormalize(tensor, key)
+
+            return raw
 
 
 def quick_inspect(h5_file_path: Union[str, Path]) -> None:
