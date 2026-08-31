@@ -5,6 +5,10 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
+import tqdm
+import json
+import pickle
+import warnings
 import logging
 
 # Configure logging
@@ -62,6 +66,211 @@ class MeshH5Dataset(Dataset):
 
 
         return data 
+
+class RobustFieldNormalizer:
+    
+    def __init__(self, fit_dataset: Optional[MeshH5Dataset] = None, save_path: Union[str, Path] = 'data_stats'):
+        self.stats = {}
+        self.fitted = False
+        self.field_shapes = {}
+        self.save_path = save_path 
+        if fit_dataset is not None:
+            self.fit(fit_dataset)
+    
+    def fit(self, dataset: MeshH5Dataset, verbose: bool = True):
+        
+        # Get all fields that need normalization
+        fields_to_normalize = ['internal_coords', 'sdf', 'boundary_coords', *dataset.fields, *dataset.boundary_fields]
+        
+        # Collect data for each field
+        field_data = {field: [] for field in fields_to_normalize}
+        
+        for idx in tqdm(range(len(dataset)), desc="Collecting data"):
+            sample = dataset[idx]
+            for field in fields_to_normalize:
+                if field in sample and isinstance(sample[field], torch.Tensor):
+                    # Store shape info
+                    if field not in self.field_shapes:
+                        self.field_shapes[field] = sample[field].shape[1:]
+                    field_data[field].append(sample[field].numpy())
+        
+        # Compute robust statistics
+        stats_summary = {}
+        for field, data_list in field_data.items():
+            if not data_list:
+                warnings.warn(f"No data found for field '{field}'")
+                continue
+            
+            # Concatenate all data
+            data = np.concatenate(data_list, axis=0)
+            
+            # Compute robust statistics
+            self.stats[f'{field}_median'] = np.median(data, axis=0, keepdims=True)
+            self.stats[f'{field}_q25'] = np.percentile(data, 25, axis=0, keepdims=True)
+            self.stats[f'{field}_q75'] = np.percentile(data, 75, axis=0, keepdims=True)
+            self.stats[f'{field}_iqr'] = self.stats[f'{field}_q75'] - self.stats[f'{field}_q25'] + 1e-8
+            
+            # Store min/max for monitoring (NOT for clipping!)
+            self.stats[f'{field}_min'] = data.min(axis=0, keepdims=True)
+            self.stats[f'{field}_max'] = data.max(axis=0, keepdims=True)
+            
+            # Store full range for reference
+            self.stats[f'{field}_range'] = self.stats[f'{field}_max'] - self.stats[f'{field}_min']
+            
+            # Summary for verbose output
+            stats_summary[field] = {
+                'shape': data.shape,
+                'median': np.median(data),
+                'iqr': np.percentile(data, 75) - np.percentile(data, 25),
+                'min': data.min(),
+                'max': data.max(),
+                'q25': np.percentile(data, 25),
+                'q75': np.percentile(data, 75),
+                'mean': data.mean(),
+                'std': data.std()
+            }
+        
+        self.fitted = True
+        
+        if verbose:
+            print("\n📊 Normalization Statistics Summary:")
+            print("-" * 70)
+            for field, stats in stats_summary.items():
+                print(f"\n{field}:")
+                print(f"  Shape: {stats['shape']}")
+                print(f"  Median: {stats['median']:.4f}")
+                print(f"  IQR:    {stats['iqr']:.4f}")
+                print(f"  Min:    {stats['min']:.4f}")
+                print(f"  Max:    {stats['max']:.4f}")
+                print(f"  Q25:    {stats['q25']:.4f}")
+                print(f"  Q75:    {stats['q75']:.4f}")
+                if stats['iqr'] > 0:
+                    print(f"  Range/ IQR: {stats['max'] - stats['min']:.2f} / {stats['iqr']:.2f}")
+        
+        print("\n✅ Robust normalization statistics computed successfully!")
+        print(f"   Fields normalized: {len(field_data)}")
+        print("   NO CLIPPING applied - all physical information preserved")
+        return self
+    
+    def normalize(self, data: torch.Tensor, field: str) -> torch.Tensor:
+        if not self.fitted:
+            raise ValueError("Normalizer not fitted yet. Call fit() first.")
+        
+        if field not in self.stats:
+            return data
+        
+        if isinstance(data, np.ndarray):
+            data = torch.from_numpy(data).float()
+        
+        # Use robust normalization: (x - median) / IQR
+        median = torch.tensor(self.stats[f'{field}_median'], device=data.device)
+        iqr = torch.tensor(self.stats[f'{field}_iqr'], device=data.device)
+        
+        normalized = (data - median) / iqr
+        
+        # NO CLIPPING! Preserve all values
+        return normalized
+    
+    def denormalize(self, data: torch.Tensor, field: str) -> torch.Tensor:
+        if not self.fitted:
+            raise ValueError("Normalizer not fitted yet.")
+        
+        if field not in self.stats:
+            return data
+        
+        median = torch.tensor(self.stats[f'{field}_median'], device=data.device)
+        iqr = torch.tensor(self.stats[f'{field}_iqr'], device=data.device)
+        
+        return data * iqr + median
+    
+    def save(self):
+        path = Path(self.save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Save as JSON for readability
+        json_path = path.with_suffix('.json')
+        stats_to_save = {}
+        for key, value in self.stats.items():
+            if isinstance(value, np.ndarray):
+                stats_to_save[key] = value.tolist()
+            else:
+                stats_to_save[key] = value
+        
+        with open(json_path, 'w') as f:
+            json.dump({
+                'stats': stats_to_save,
+                'fitted': self.fitted,
+                'field_shapes': self.field_shapes,
+                'method': 'robust_median_iqr',
+                'description': 'Robust normalization using median and IQR. NO CLIPPING applied.'
+            }, f, indent=2)
+        
+        # Also save as pickle for faster loading
+        with open(path, 'wb') as f:
+            pickle.dump({
+                'stats': self.stats,
+                'fitted': self.fitted,
+                'field_shapes': self.field_shapes
+            }, f)
+        
+        print(f"✅ Normalization stats saved to:")
+        print(f"   Pickle: {path}")
+        print(f"   JSON:   {json_path}")
+        return self
+    
+    def load(self):
+        """Load normalization statistics from file"""
+        path = Path(self.save_path)
+        
+        # Try pickle first
+        if path.exists():
+            with open(path, 'rb') as f:
+                saved = pickle.load(f)
+            self.stats = saved['stats']
+            self.fitted = saved['fitted']
+            self.field_shapes = saved.get('field_shapes', {})
+        else:
+            # Try JSON
+            json_path = path.with_suffix('.json')
+            if json_path.exists():
+                with open(json_path, 'r') as f:
+                    saved = json.load(f)
+                # Convert lists back to numpy arrays
+                self.stats = {}
+                for key, value in saved['stats'].items():
+                    if isinstance(value, list):
+                        self.stats[key] = np.array(value)
+                    else:
+                        self.stats[key] = value
+                self.fitted = saved['fitted']
+                self.field_shapes = saved.get('field_shapes', {})
+            else:
+                raise FileNotFoundError(f"No normalization file found at {path} or {json_path}")
+        
+        print(f"✅ Normalization stats loaded from {path}")
+        print(f"   Method: Robust (Median/IQR)")
+        print("   NO CLIPPING - physical information preserved")
+        return self
+    
+    def get_stats_summary(self, field: str) -> Dict:
+        """Get a summary of statistics for a field"""
+        if not self.fitted:
+            return {}
+        
+        if field not in self.stats:
+            return {}
+        
+        return {
+            'median': self.stats[f'{field}_median'],
+            'iqr': self.stats[f'{field}_iqr'],
+            'q25': self.stats[f'{field}_q25'],
+            'q75': self.stats[f'{field}_q75'],
+            'min': self.stats[f'{field}_min'],
+            'max': self.stats[f'{field}_max'],
+            'range': self.stats[f'{field}_range'],
+            'shape': self.field_shapes.get(field, 'unknown')
+        }
+
 
 
 
