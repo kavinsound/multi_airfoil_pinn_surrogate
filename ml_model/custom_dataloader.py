@@ -3,6 +3,7 @@ import h5py
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import random_split, Subset
 from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
 import tqdm
@@ -282,28 +283,107 @@ class normalizedMeshH5Dataset(MeshH5Dataset):
             self.normalizer.fit(dataset=MeshH5Dataset(h5_path=self.h5_path))
             self.normalizer.save()
 
-        def __len__(self) -> int:
-            return super().__len__()
+    def __len__(self) -> int:
+        return super().__len__()
 
 
-        def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
 
-            raw = super().__getitem__(idx)
+        raw = super().__getitem__(idx)
 
-            normalized = {}
-            for key, tensor in raw.items():
-                normalized[key] = self.normalizer.normalize(tensor, key)
+        normalized = {}
+        for key, tensor in raw.items():
+            normalized[key] = self.normalizer.normalize(tensor, key)
 
-            return normalized
+        return normalized
 
 
-        def denormalize(self, item: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def denormalize(self, item: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
 
-            raw = {}
-            for key, tensor in item.items():
-                raw[key] = self.normalizer.denormalize(tensor, key)
+        raw = {}
+        for key, tensor in item.items():
+            raw[key] = self.normalizer.denormalize(tensor, key)
 
-            return raw
+        return raw
+
+
+
+
+# Alternative implementation that creates separate dataset instances
+def create_train_val_test_datasets(
+    h5_path: Union[str, Path],
+    data_save_path: Union[str, Path] = "data_stats",
+    train_ratio: float = 0.7,
+    val_ratio: float = 0.15,
+    test_ratio: float = 0.15,
+    random_seed: int = 42,
+    use_subset: Optional[int] = None
+) -> Tuple[normalizedMeshH5Dataset, normalizedMeshH5Dataset, normalizedMeshH5Dataset]:
+    
+    
+    # Validate ratios
+    assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "Ratios must sum to 1.0"
+    
+    # Create base dataset to get total length and indices
+    base_dataset = MeshH5Dataset(h5_path=h5_path)
+    total_len = len(base_dataset)
+    
+    # Optionally use subset
+    if use_subset is not None:
+        total_len = min(total_len, use_subset)
+        indices = list(range(total_len))
+    else:
+        indices = list(range(total_len))
+    
+    # Calculate split sizes
+    train_size = int(train_ratio * total_len)
+    val_size = int(val_ratio * total_len)
+    test_size = total_len - train_size - val_size
+    
+    # Random split with seed
+    np.random.seed(random_seed)
+    np.random.shuffle(indices)
+    
+    train_indices = indices[:train_size]
+    val_indices = indices[train_size:train_size + val_size]
+    test_indices = indices[train_size + val_size:]
+    
+    print(f"Dataset split: Train={len(train_indices)}, Val={len(val_indices)}, Test={len(test_indices)}")
+    
+    # STEP 1: Create and fit normalizer on training data only
+    train_dataset_raw = Subset(MeshH5Dataset(h5_path=h5_path), train_indices)
+    
+    normalizer = FieldNormalizer(save_path=data_save_path)
+    normalizer.fit(dataset=train_dataset_raw)
+    normalizer.save()
+    
+    # STEP 2: Create separate normalized datasets for each split
+    # We need to create a custom wrapper or modify the dataset to accept indices
+    # Here's a simple approach - create a custom class or use Subset
+    
+    # For this approach, we'll need to modify normalizedMeshH5Dataset 
+    # or create a wrapper. Here's a simplified version using Subset:
+    
+    full_normalized = normalizedMeshH5Dataset(
+        h5_path=h5_path,
+        save_path=data_save_path,
+        load=True
+    )
+    
+    train_dataset = Subset(full_normalized, train_indices)
+    val_dataset = Subset(full_normalized, val_indices)
+    test_dataset = Subset(full_normalized, test_indices)
+    
+    return train_dataset, val_dataset, test_dataset, full_normalized
+
+
+def getDataLoaders(sets: Tuple[normalizedMeshH5Dataset, normalizedMeshH5Dataset, normalizedMeshH5Dataset]) -> Tuple[DataLoader, DataLoader, DataLoader]:
+
+    train_loader = DataLoader(sets[0], batch_size=32, shuffle=True, pin_memory=True, num_workers=4)
+    test_loader = DataLoader(sets[1], batch_size=32, shuffle=False, pin_memory=True, num_workers=4)
+    val_loader = DataLoader(sets[2], batch_size=32, shuffle=False, pin_memory=True, num_workers=4)
+
+    return train_loader, test_loader, val_loader
 
 
 def quick_inspect(h5_file_path: Union[str, Path]) -> None:
