@@ -12,7 +12,7 @@
 
 ## 📖 Abstract
 
-This repository serves as the foundational pipeline for my undergraduate research project focused on accelerating Computational Fluid Dynamics (CFD) simulations using Geometric Deep Learning. The goal is to generate a high-fidelity dataset of 2D turbulent flows over multi-airfoil configurations and develop a Physics-Informed Neural Operator to act as a digital twin for aerodynamic analysis. The entire pipeline is fully automated and designed for high-performance computing environments.
+This work presents a comprehensive pipeline for the generation of high-fidelity CFD datasets and the development of neural surrogate models for aerodynamic applications. A fully automated framework is implemented to produce 2D turbulent flow simulations over multi-airfoil configurations, with the resulting dataset serving as the foundation for training a Physics-Informed Neural Operator. The pipeline is designed for scalable execution on high-performance computing clusters and aims to establish a digital twin capable of rapid aerodynamic prediction.
 
 ---
 
@@ -23,9 +23,9 @@ The workflow is fully automated, spanning from geometric generation to HPC execu
 ### 1️⃣ Parameter Space Exploration
 Generates random airfoil configurations and flow conditions using a **Sobol sequence** to ensure a quasi-random, low-discrepancy spread across the design space. The parameters include:
 
-    Reynolds number: $\text{Re} \in [10^4, 10^6]$ (incompressible, transitional regime)
+    Reynolds number: Re in [10^4, 10^6] (incompressible, transitional regime)
     
-    Angle of attack: $\alpha \in [0^\circ, 45^\circ]$
+    Angle of attack: alpha in [0 deg, 45 deg]
     
     Airfoil geometry parameters (NACA profiles, multi-element positions)
 
