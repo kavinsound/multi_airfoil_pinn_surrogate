@@ -113,6 +113,7 @@ def readCase(path, h5_file_path):
 
     Re = vel / 1.5e-5
 
+    log_re = np.log(Re)
     # print(Cd_avg, Cl_avg)
 
     from scipy.spatial import KDTree
@@ -160,6 +161,7 @@ def readCase(path, h5_file_path):
         coeff_grp = case_grp.create_group("constant")
         coeff_grp.create_dataset("Cd", data=Cd_avg, dtype=np.float32)
         coeff_grp.create_dataset("Cl", data=Cl_avg, dtype=np.float32)
+        coeff_grp.create_dataset("log_Re", data=log_re, dtype=np.float32)
         coeff_grp.create_dataset("Re", data=Re, dtype=np.float32)
 
 

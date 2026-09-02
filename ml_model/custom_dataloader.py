@@ -5,6 +5,10 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
+import tqdm
+import json
+import pickle
+import warnings
 import logging
 
 # Configure logging
@@ -15,416 +19,291 @@ logger = logging.getLogger(__name__)
 class MeshH5Dataset(Dataset):
     
     
-    def __init__(
-        self,
-        file_path: Union[str, Path],
-        fields: Optional[List[str]] = None,
-        include_coords: bool = True,
-        include_sdf: bool = True,
-        include_edges: bool = True,
-        include_boundary: bool = False,
-        include_coeffs: bool = False,
-        normalize_coords: bool = True,
-        normalize_fields: bool = False,
-        field_stats: Optional[Dict] = None,
-        transform: Optional[callable] = None,
-        target_transform: Optional[callable] = None,
-        cache_data: bool = False,
-    ):
-        
-        self.file_path = Path(file_path)
-        self.fields = fields or ['p', 'U', 'ReThetat', 'gammaInt', 'k', 'nut', 'omega']
-        self.include_coords = include_coords
-        self.include_sdf = include_sdf
-        self.include_edges = include_edges
-        self.include_boundary = include_boundary
-        self.include_coeffs = include_coeffs
-        self.normalize_coords = normalize_coords
-        self.normalize_fields = normalize_fields
-        self.field_stats = field_stats
-        self.transform = transform
-        self.target_transform = target_transform
-        self.cache_data = cache_data
-        
-        # Validate file exists
-        if not self.file_path.exists():
-            raise FileNotFoundError(f"HDF5 file not found: {self.file_path}")
-        
-        # Get case names
-        with h5py.File(self.file_path, 'r') as f:
-            self.case_names = list(f.keys())
-            self.num_cases = len(self.case_names)
-        
-        if self.num_cases == 0:
-            raise ValueError(f"No cases found in HDF5 file: {self.file_path}")
-        
-        logger.info(f"Loaded dataset with {self.num_cases} cases")
-        logger.info(f"Fields to load: {self.fields}")
-        
-        # Cache data if requested
-        self.cached_data = {}
-        if self.cache_data:
-            logger.info("Caching all data in memory...")
-            for case_name in self.case_names:
-                self.cached_data[case_name] = self._load_case(case_name)
-            logger.info("Caching complete")
-        
-        # Precompute normalization stats if needed
-        if self.normalize_coords:
-            self._compute_coord_stats()
-        
-        if self.normalize_fields and self.field_stats is None:
-            self._compute_field_stats()
-    
-    def _compute_coord_stats(self):
-        all_coords = []
-        for case_name in self.case_names:
-            with h5py.File(self.file_path, 'r') as f:
-                coords = f[f'{case_name}/internal/coords'][:]
-                all_coords.append(coords)
-        
-        all_coords = np.vstack(all_coords)
-        self.coord_min = all_coords.min(axis=0)
-        self.coord_max = all_coords.max(axis=0)
-        self.coord_range = self.coord_max - self.coord_min
-        self.coord_range[self.coord_range == 0] = 1.0  # Avoid division by zero
-        
-        logger.info(f"Coord stats - min: {self.coord_min}, max: {self.coord_max}")
-    
-    def _compute_field_stats(self):
-        self.field_stats = {}
-        
-        for field in self.fields:
-            all_values = []
-            for case_name in self.case_names:
-                with h5py.File(self.file_path, 'r') as f:
-                    data = f[f'{case_name}/internal/{field}'][:]
-                    all_values.append(data)
-            
-            all_values = np.vstack(all_values)
-            self.field_stats[field] = {
-                'mean': np.mean(all_values, axis=0),
-                'std': np.std(all_values, axis=0)
-            }
-            # Avoid division by zero
-            self.field_stats[field]['std'][self.field_stats[field]['std'] == 0] = 1.0
-            
-            logger.info(f"Field {field} stats - mean: {self.field_stats[field]['mean']}, "
-                       f"std: {self.field_stats[field]['std']}")
-    
-    def _load_case(self, case_name: str) -> Dict:
-        
-        data = {}
-        
-        with h5py.File(self.file_path, 'r') as f:
-            case_grp = f[case_name]
-            internal_grp = case_grp['internal']
-            
-            # Load coordinates
-            if self.include_coords:
-                coords = internal_grp['coords'][:].astype(np.float32)
-                data['coords'] = coords
-                
-                # Normalize if requested
-                if self.normalize_coords:
-                    data['coords'] = (coords - self.coord_min) / self.coord_range
-            
-            # Load SDF
-            if self.include_sdf:
-                sdf = internal_grp['sdf'][:].astype(np.float32)
-                data['sdf'] = sdf
-            
-            # Load fields
-            for field in self.fields:
-                if field in internal_grp:
-                    field_data = internal_grp[field][:].astype(np.float32)
-                    
-                    # Normalize if requested
-                    if self.normalize_fields and self.field_stats is not None:
-                        if field in self.field_stats:
-                            field_data = (field_data - self.field_stats[field]['mean']) / \
-                                        self.field_stats[field]['std']
-                    
-                    data[field] = field_data
-                else:
-                    logger.warning(f"Field {field} not found in case {case_name}")
-                    # Create empty array as placeholder
-                    n_points = internal_grp['coords'].shape[0]
-                    data[field] = np.zeros((n_points,), dtype=np.float32)
-            
-            # Load edges (connectivity from Delaunay triangulation)
-            if self.include_edges:
-                if 'edges' in internal_grp:
-                    data['edges'] = internal_grp['edges'][:].astype(np.int32)
-                else:
-                    logger.warning(f"No edges found in case {case_name}")
-                    data['edges'] = np.array([], dtype=np.int32)
-            
-            # Load boundary data
-            if self.include_boundary:
-                boundary_grp = case_grp['boundary']
-                boundary_coords = boundary_grp['coords'][:].astype(np.float32)
-                data['boundary_coords'] = boundary_coords
-                
-                for key in boundary_grp.keys():
-                    if key != 'coords':
-                        data[f'boundary_{key}'] = boundary_grp[key][:].astype(np.float32)
-            
-            # Load coefficients
-            if self.include_coeffs:
-                coeff_grp = case_grp['constant']
-                for key in coeff_grp.keys():
-                    data[key] = coeff_grp[key][()].astype(np.float32)
-        
-        return data
-    
+    def __init__(self, h5_path: Union[str, Path]):
+        self.h5_path = h5_path
+        self.internal_fields = ['p', 'U', 'k', 'omega', 'nut', 'gammaInt', 'ReThetat'] 
+        self.boundary_fields = ['Cp', 'Cf']
+        self.constants = ['Cd', 'Cl', 'log_Re']
+
+        with h5py.File(self.h5_path, 'r') as f:
+            self.n = len(f.keys())
+            self.case_names = f.keys()
+
+
+        print(f"{self.n} cases loaded from {self.h5_path}")
+
     def __len__(self) -> int:
-        return self.num_cases
-    
+        return self.n
+
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        key = self.case_names[idx]
+        data = {}
+
+        with h5py.File(self.h5_path, 'r') as f:
+            case = f[key]
+
+
+            internal_data = case['internal']
+
+            data['internal_coords'] = torch.tensor(internal_data['coords'][:], dtype=torch.float32)
+            data['sdf'] = torch.tensor(internal_data['sdf'][:], dtype=torch.float32).unsqueeze(-1)
+
+            for field in self.internal_fields:
+                data[field] = internal_data[field]
+                if field != 'U':
+                    data[field] = data[field].unsqueeze(-1)
+
+            boundary_data = case['boundary']
+            data['boundary_coords'] = torch.tensor(boundary_data['coords'][:], dtype=torch.float32)
+            data['Cp'] = torch.tensor(boundary_data['Cp'], dtype=torch.float32).unsqueeze(-1)
+            data['Cf'] = torch.tensor(boundary_data['Cf'], dtype=torch.float32).unsqueeze(-1)
+
+            coeffs_data = case['constant']
+            data['Cd'] = torch.tensor(coeffs_data['Cd'], dtype=torch.float32).unsqueeze(0)
+            data['Cl'] = torch.tensor(coeffs_data['Cl'], dtype=torch.float32).unsqueeze(0)
+            data['log_Re'] = torch.tensor(coeffs_data['log_Re'], dtype=torch.float32).unsqueeze(0)
+
+
+        return data 
+
+class FieldNormalizer:
+    
+    def __init__(self, fit_dataset: Optional[MeshH5Dataset] = None, save_path: Union[str, Path] = 'data_stats'):
+        self.stats = {}
+        self.fitted = False
+        self.field_shapes = {}
+        self.save_path = save_path 
+        if fit_dataset is not None:
+            self.fit(fit_dataset)
+    
+    def fit(self, dataset: MeshH5Dataset, verbose: bool = True):
         
-        case_name = self.case_names[idx]
+        # Get all fields that need normalization
+        fields_to_normalize = ['internal_coords', 'sdf', 'boundary_coords', *dataset.internal_fields, *dataset.boundary_fields, *dataset.constants]
         
-        # Load from cache or directly from file
-        if self.cache_data:
-            data = self.cached_data[case_name]
-        else:
-            data = self._load_case(case_name)
+        # Collect data for each field
+        field_data = {field: [] for field in fields_to_normalize}
         
-        # Convert to tensors
-        tensor_data = {}
-        for key, value in data.items():
+        for idx in tqdm(range(len(dataset)), desc="Collecting data"):
+            sample = dataset[idx]
+            for field in fields_to_normalize:
+                if field in sample and isinstance(sample[field], torch.Tensor):
+                    # Store shape info
+                    if field not in self.field_shapes:
+                        self.field_shapes[field] = sample[field].shape[1:]
+                    field_data[field].append(sample[field].numpy())
+        
+        # Compute robust statistics
+        stats_summary = {}
+        for field, data_list in field_data.items():
+            if not data_list:
+                warnings.warn(f"No data found for field '{field}'")
+                continue
+            
+            # Concatenate all data
+            data = np.concatenate(data_list, axis=0)
+            
+            # Compute robust statistics
+            self.stats[f'{field}_median'] = np.median(data, axis=0, keepdims=True)
+            self.stats[f'{field}_q25'] = np.percentile(data, 25, axis=0, keepdims=True)
+            self.stats[f'{field}_q75'] = np.percentile(data, 75, axis=0, keepdims=True)
+            self.stats[f'{field}_iqr'] = self.stats[f'{field}_q75'] - self.stats[f'{field}_q25'] + 1e-8
+            
+            # Store min/max for monitoring (NOT for clipping!)
+            self.stats[f'{field}_min'] = data.min(axis=0, keepdims=True)
+            self.stats[f'{field}_max'] = data.max(axis=0, keepdims=True)
+            
+            # Store full range for reference
+            self.stats[f'{field}_range'] = self.stats[f'{field}_max'] - self.stats[f'{field}_min']
+            
+            # Summary for verbose output
+            stats_summary[field] = {
+                'shape': data.shape,
+                'median': np.median(data),
+                'iqr': np.percentile(data, 75) - np.percentile(data, 25),
+                'min': data.min(),
+                'max': data.max(),
+                'q25': np.percentile(data, 25),
+                'q75': np.percentile(data, 75),
+                'mean': data.mean(),
+                'std': data.std()
+            }
+        
+        self.fitted = True
+        
+        if verbose:
+            print("\nNormalization Statistics Summary:")
+            print("-" * 70)
+            for field, stats in stats_summary.items():
+                print(f"\n{field}:")
+                print(f"  Shape: {stats['shape']}")
+                print(f"  Median: {stats['median']:.4f}")
+                print(f"  IQR:    {stats['iqr']:.4f}")
+                print(f"  Min:    {stats['min']:.4f}")
+                print(f"  Max:    {stats['max']:.4f}")
+                print(f"  Q25:    {stats['q25']:.4f}")
+                print(f"  Q75:    {stats['q75']:.4f}")
+                if stats['iqr'] > 0:
+                    print(f"  Range/ IQR: {stats['max'] - stats['min']:.2f} / {stats['iqr']:.2f}")
+        
+        print(f"   Fields normalized: {len(field_data)}")
+        return self
+    
+    def normalize(self, data: torch.Tensor, field: str) -> torch.Tensor:
+        if not self.fitted:
+            raise ValueError("Normalizer not fitted yet. Call fit() first.")
+        
+        if field not in self.stats:
+            return data
+        
+        if isinstance(data, np.ndarray):
+            data = torch.from_numpy(data).float()
+        
+        # Use robust normalization: (x - median) / IQR
+        median = torch.tensor(self.stats[f'{field}_median'], device=data.device)
+        iqr = torch.tensor(self.stats[f'{field}_iqr'], device=data.device)
+        
+        normalized = (data - median) / iqr
+        
+        # NO CLIPPING! Preserve all values
+        return normalized
+    
+    def denormalize(self, data: torch.Tensor, field: str) -> torch.Tensor:
+        if not self.fitted:
+            raise ValueError("Normalizer not fitted yet.")
+        
+        if field not in self.stats:
+            return data
+        
+        median = torch.tensor(self.stats[f'{field}_median'], device=data.device)
+        iqr = torch.tensor(self.stats[f'{field}_iqr'], device=data.device)
+        
+        return data * iqr + median
+    
+    def save(self):
+        path = Path(self.save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Save as JSON for readability
+        json_path = path.with_suffix('.json')
+        stats_to_save = {}
+        for key, value in self.stats.items():
             if isinstance(value, np.ndarray):
-                if value.dtype == np.int32:
-                    tensor_data[key] = torch.tensor(value, dtype=torch.long)
-                else:
-                    tensor_data[key] = torch.tensor(value, dtype=torch.float32)
+                stats_to_save[key] = value.tolist()
             else:
-                tensor_data[key] = torch.tensor(value, dtype=torch.float32)
+                stats_to_save[key] = value
         
-        # Apply transforms if provided
-        if self.transform is not None:
-            # Transform input data (coordinates, SDF, fields)
-            input_data = {k: v for k, v in tensor_data.items() 
-                         if k in ['coords', 'sdf', 'edges'] + self.fields}
-            tensor_data.update(self.transform(input_data))
+        with open(json_path, 'w') as f:
+            json.dump({
+                'stats': stats_to_save,
+                'fitted': self.fitted,
+                'field_shapes': self.field_shapes
+            }, f, indent=2)
         
-        if self.target_transform is not None:
-            # Transform target data (coefficients)
-            target_data = {k: v for k, v in tensor_data.items() 
-                          if k in ['Cd', 'Cl']}
-            tensor_data.update(self.target_transform(target_data))
+        # Also save as pickle for faster loading
+        with open(path, 'wb') as f:
+            pickle.dump({
+                'stats': self.stats,
+                'fitted': self.fitted,
+                'field_shapes': self.field_shapes
+            }, f)
         
-        return tensor_data
-
-
-class MeshDataLoader:
+        print(f"Normalization stats saved to:")
+        print(f"   Pickle: {path}")
+        print(f"   JSON:   {json_path}")
+        return self
     
-    
-    @staticmethod
-    def create_dataloader(
-        file_path: Union[str, Path],
-        batch_size: int = 32,
-        shuffle: bool = True,
-        num_workers: int = 4,
-        pin_memory: bool = True,
-        drop_last: bool = False,
-        fields: Optional[List[str]] = None,
-        include_coords: bool = True,
-        include_sdf: bool = True,
-        include_edges: bool = True,
-        include_boundary: bool = False,
-        include_coeffs: bool = False,
-        normalize_coords: bool = True,
-        normalize_fields: bool = False,
-        cache_data: bool = False,
-        **kwargs
-    ) -> DataLoader:
+    def load(self):
+        path = Path(self.save_path)
         
-        dataset = MeshH5Dataset(
-            file_path=file_path,
-            fields=fields,
-            include_coords=include_coords,
-            include_sdf=include_sdf,
-            include_edges=include_edges,
-            include_boundary=include_boundary,
-            include_coeffs=include_coeffs,
-            normalize_coords=normalize_coords,
-            normalize_fields=normalize_fields,
-            cache_data=cache_data
-        )
+        # Try pickle first
+        if path.exists():
+            with open(path, 'rb') as f:
+                saved = pickle.load(f)
+            self.stats = saved['stats']
+            self.fitted = saved['fitted']
+            self.field_shapes = saved.get('field_shapes', {})
+        else:
+            # Try JSON
+            json_path = path.with_suffix('.json')
+            if json_path.exists():
+                with open(json_path, 'r') as f:
+                    saved = json.load(f)
+                # Convert lists back to numpy arrays
+                self.stats = {}
+                for key, value in saved['stats'].items():
+                    if isinstance(value, list):
+                        self.stats[key] = np.array(value)
+                    else:
+                        self.stats[key] = value
+                self.fitted = saved['fitted']
+                self.field_shapes = saved.get('field_shapes', {})
+            else:
+                raise FileNotFoundError(f"No normalization file found at {path} or {json_path}")
         
-        dataloader = DataLoader(
-            dataset,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-            drop_last=drop_last,
-            **kwargs
-        )
+        print(f"Normalization stats loaded from {path}")
+        print(f"   Method: Robust (Median/IQR)")
+        return self
+    
+    def get_stats_summary(self, field: str) -> Dict:
+        if not self.fitted:
+            return {}
         
-        return dataloader
+        if field not in self.stats:
+            return {}
+        
+        return {
+            'median': self.stats[f'{field}_median'],
+            'iqr': self.stats[f'{field}_iqr'],
+            'q25': self.stats[f'{field}_q25'],
+            'q75': self.stats[f'{field}_q75'],
+            'min': self.stats[f'{field}_min'],
+            'max': self.stats[f'{field}_max'],
+            'range': self.stats[f'{field}_range'],
+            'shape': self.field_shapes.get(field, 'unknown')
+        }
+
+class normalizedMeshH5Dataset(MeshH5Dataset):
+
+    def __init__(self, h5_path: Union[str, Path], save_path: Union[str, Path]="data_stats", load: bool=False):
+        super().__init__(h5_path=h5_path)
+
+        self.h5_path = h5_path
+        self.save_path = save_path
+        self.load = load
+
+        self.normalizer=FieldNormalizer(save_path=save_path)
 
 
-def create_dataset(
-    h5_file_path: Union[str, Path],
-    fields: Optional[List[str]] = None,
-    include_coords: bool = True,
-    include_sdf: bool = True,
-    include_edges: bool = True,
-    include_boundary: bool = True,
-    include_coeffs: bool = True,
-    normalize_coords: bool = True,
-    normalize_fields: bool = True,
-    cache_data: bool = False,
-    **kwargs
-) -> MeshH5Dataset:
-    
-    return MeshH5Dataset(
-        file_path=h5_file_path,
-        fields=fields,
-        include_coords=include_coords,
-        include_sdf=include_sdf,
-        include_edges=include_edges,
-        include_boundary=include_boundary,
-        include_coeffs=include_coeffs,
-        normalize_coords=normalize_coords,
-        normalize_fields=normalize_fields,
-        cache_data=cache_data,
-        **kwargs
-    )
+        if self.load:
+            self.normalizer.load()
+        else:
+            self.normalizer.fit(dataset=MeshH5Dataset(h5_path=self.h5_path))
+            self.normalizer.save()
+
+        def __len__(self) -> int:
+            return super().__len__()
 
 
-def create_dataloader(
-    h5_file_path: Union[str, Path],
-    batch_size: int = 32,
-    shuffle: bool = True,
-    num_workers: int = 4,
-    pin_memory: bool = True,
-    drop_last: bool = False,
-    fields: Optional[List[str]] = None,
-    include_coords: bool = True,
-    include_sdf: bool = True,
-    include_edges: bool = True,
-    include_boundary: bool = True,
-    include_coeffs: bool = True,
-    normalize_coords: bool = True,
-    normalize_fields: bool = True,
-    cache_data: bool = False,
-    **kwargs
-) -> DataLoader:
-    
-    dataset = create_dataset(
-        h5_file_path=h5_file_path,
-        fields=fields,
-        include_coords=include_coords,
-        include_sdf=include_sdf,
-        include_edges=include_edges,
-        include_boundary=include_boundary,
-        include_coeffs=include_coeffs,
-        normalize_coords=normalize_coords,
-        normalize_fields=normalize_fields,
-        cache_data=cache_data
-    )
-    
-    return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        drop_last=drop_last,
-        **kwargs
-    )
+        def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
 
-def create_train_val_test_loaders(
-    h5_file_path: Union[str, Path],
-    batch_size: int = 32,
-    train_split: float = 0.8,
-    val_split: float = 0.1,
-    test_split: float = 0.1,
-    random_seed: int = 42,
-    num_workers: int = 4,
-    pin_memory: bool = True,
-    fields: Optional[List[str]] = None,
-    include_coords: bool = True,
-    include_sdf: bool = True,
-    include_edges: bool = True,
-    include_boundary: bool = True,
-    include_coeffs: bool = True,
-    normalize_coords: bool = True,
-    normalize_fields: bool = True,
-    cache_data: bool = False,
-    **kwargs
-) -> Dict[str, DataLoader]:
-    
-    dataset = create_dataset(
-        h5_file_path=h5_file_path,
-        fields=fields,
-        include_coords=include_coords,
-        include_sdf=include_sdf,
-        include_edges=include_edges,
-        include_boundary=include_boundary,
-        include_coeffs=include_coeffs,
-        normalize_coords=normalize_coords,
-        normalize_fields=normalize_fields,
-        cache_data=cache_data
-    )
-    
-    case_names = dataset.case_names
-    
-    np.random.seed(random_seed)
-    indices = np.random.permutation(len(case_names))
-    
-    train_end = int(train_split * len(indices))
-    val_end = int((train_split + val_split) * len(indices))
-    
-    train_indices = indices[:train_end]
-    val_indices = indices[train_end:val_end]
-    test_indices = indices[val_end:]
-    
-    from torch.utils.data import Subset
-    
-    train_dataset = Subset(dataset, train_indices)
-    val_dataset = Subset(dataset, val_indices)
-    test_dataset = Subset(dataset, test_indices)
-    
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        drop_last=True,
-        **kwargs
-    )
-    
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        drop_last=False,
-        **kwargs
-    )
-    
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        drop_last=False,
-        **kwargs
-    )
-    
-    return {
-        'train': train_loader,
-        'val': val_loader,
-        'test': test_loader
-    }
+            raw = super().__getitem__(idx)
+
+            normalized = {}
+            for key, tensor in raw.items():
+                normalized[key] = self.normalizer.normalize(tensor, key)
+
+            return normalized
+
+
+        def denormalize(self, item: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+
+            raw = {}
+            for key, tensor in item.items():
+                raw[key] = self.normalizer.denormalize(tensor, key)
+
+            return raw
 
 
 def quick_inspect(h5_file_path: Union[str, Path]) -> None:
@@ -467,7 +346,7 @@ def quick_inspect(h5_file_path: Union[str, Path]) -> None:
             # Coefficients group
             if 'constant' in f[case_name]:
                 coeff_grp = f[case_name]['constant']
-                print(f"  └── coeffs/")
+                print(f"  └── constant/")
                 for key in coeff_grp.keys():
                     value = coeff_grp[key][()]
                     print(f"        ├── {key}: {value}")
