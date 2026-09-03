@@ -28,10 +28,10 @@ class MeshH5Dataset(Dataset):
 
         with h5py.File(self.h5_path, 'r') as f:
             self.n = len(f.keys())
-            self.case_names = f.keys()
+            self.case_names = list(f.keys())
 
 
-        print(f"{self.n} cases loaded from {self.h5_path}")
+        # print(f"{self.n} cases loaded from {self.h5_path}")
 
     def __len__(self) -> int:
         return self.n
@@ -51,19 +51,19 @@ class MeshH5Dataset(Dataset):
             data['sdf'] = torch.tensor(internal_data['sdf'][:], dtype=torch.float32).unsqueeze(-1)
 
             for field in self.internal_fields:
-                data[field] = internal_data[field]
+                data[field] = torch.tensor(internal_data[field][:])
                 if field != 'U':
-                    data[field] = data[field].unsqueeze(-1)
+                    data[field] = torch.tensor(data[field][:]).unsqueeze(-1)
 
             boundary_data = case['boundary']
             data['boundary_coords'] = torch.tensor(boundary_data['coords'][:], dtype=torch.float32)
-            data['Cp'] = torch.tensor(boundary_data['Cp'], dtype=torch.float32).unsqueeze(-1)
-            data['Cf'] = torch.tensor(boundary_data['Cf'], dtype=torch.float32).unsqueeze(-1)
+            data['Cp'] = torch.tensor(boundary_data['Cp'][:], dtype=torch.float32).unsqueeze(-1)
+            data['Cf'] = torch.tensor(boundary_data['Cf'][:], dtype=torch.float32).unsqueeze(-1)
 
             coeffs_data = case['constant']
-            data['Cd'] = torch.tensor(coeffs_data['Cd'], dtype=torch.float32).unsqueeze(0)
-            data['Cl'] = torch.tensor(coeffs_data['Cl'], dtype=torch.float32).unsqueeze(0)
-            data['log_Re'] = torch.tensor(coeffs_data['log_Re'], dtype=torch.float32).unsqueeze(0)
+            data['Cd'] = torch.tensor(coeffs_data['Cd'][()], dtype=torch.float32).unsqueeze(0)
+            data['Cl'] = torch.tensor(coeffs_data['Cl'][()], dtype=torch.float32).unsqueeze(0)
+            data['log_Re'] = torch.tensor(coeffs_data['log_Re'][()], dtype=torch.float32).unsqueeze(0)
 
 
         return data 
@@ -86,7 +86,7 @@ class FieldNormalizer:
         # Collect data for each field
         field_data = {field: [] for field in fields_to_normalize}
         
-        for idx in tqdm(range(len(dataset)), desc="Collecting data"):
+        for idx in range(len(dataset)):
             sample = dataset[idx]
             for field in fields_to_normalize:
                 if field in sample and isinstance(sample[field], torch.Tensor):
@@ -134,21 +134,21 @@ class FieldNormalizer:
         self.fitted = True
         
         if verbose:
-            print("\nNormalization Statistics Summary:")
-            print("-" * 70)
+            # print("\nNormalization Statistics Summary:")
+            # print("-" * 70)
             for field, stats in stats_summary.items():
-                print(f"\n{field}:")
-                print(f"  Shape: {stats['shape']}")
-                print(f"  Median: {stats['median']:.4f}")
-                print(f"  IQR:    {stats['iqr']:.4f}")
-                print(f"  Min:    {stats['min']:.4f}")
-                print(f"  Max:    {stats['max']:.4f}")
-                print(f"  Q25:    {stats['q25']:.4f}")
-                print(f"  Q75:    {stats['q75']:.4f}")
+                # print(f"\n{field}:")
+                # print(f"  Shape: {stats['shape']}")
+                # print(f"  Median: {stats['median']:.4f}")
+                # print(f"  IQR:    {stats['iqr']:.4f}")
+                # print(f"  Min:    {stats['min']:.4f}")
+                # print(f"  Max:    {stats['max']:.4f}")
+                # print(f"  Q25:    {stats['q25']:.4f}")
+                # print(f"  Q75:    {stats['q75']:.4f}")
                 if stats['iqr'] > 0:
-                    print(f"  Range/ IQR: {stats['max'] - stats['min']:.2f} / {stats['iqr']:.2f}")
+                    # print(f"  Range/ IQR: {stats['max'] - stats['min']:.2f} / {stats['iqr']:.2f}")
         
-        print(f"   Fields normalized: {len(field_data)}")
+        # print(f"   Fields normalized: {len(field_data)}")
         return self
     
     def normalize(self, data: torch.Tensor, field: str) -> torch.Tensor:
@@ -210,9 +210,9 @@ class FieldNormalizer:
                 'field_shapes': self.field_shapes
             }, f)
         
-        print(f"Normalization stats saved to:")
-        print(f"   Pickle: {path}")
-        print(f"   JSON:   {json_path}")
+        # print(f"Normalization stats saved to:")
+        # print(f"   Pickle: {path}")
+        # print(f"   JSON:   {json_path}")
         return self
     
     def load(self):
@@ -243,8 +243,8 @@ class FieldNormalizer:
             else:
                 raise FileNotFoundError(f"No normalization file found at {path} or {json_path}")
         
-        print(f"Normalization stats loaded from {path}")
-        print(f"   Method: Robust (Median/IQR)")
+        # print(f"Normalization stats loaded from {path}")
+        # print(f"   Method: Robust (Median/IQR)")
         return self
     
     def get_stats_summary(self, field: str) -> Dict:
@@ -306,7 +306,40 @@ class normalizedMeshH5Dataset(MeshH5Dataset):
 
         return raw
 
+class IndexedMeshH5Dataset(MeshH5Dataset):
+    
+    def __init__(self, h5_path: Union[str, Path], indices: List[int]):
+        super().__init__(h5_path=h5_path)
+        self.indices = indices
+        
+    def __len__(self):
+        return len(self.indices)
+    
+    def __getitem__(self, idx):
+        # Map idx to the actual dataset index
+        actual_idx = self.indices[idx]
+        return super().__getitem__(actual_idx)
 
+
+class IndexedNormalizedMeshH5Dataset(normalizedMeshH5Dataset):
+    
+    def __init__(
+        self, 
+        h5_path: Union[str, Path], 
+        indices: List[int],
+        save_path: Union[str, Path] = "data_stats",
+        load: bool = True
+    ):
+        super().__init__(h5_path=h5_path, save_path=save_path, load=load)
+        self.indices = indices
+        
+    def __len__(self):
+        return len(self.indices)
+    
+    def __getitem__(self, idx):
+        # Map idx to the actual dataset index
+        actual_idx = self.indices[idx]
+        return super().__getitem__(actual_idx)
 
 
 # Alternative implementation that creates separate dataset instances
@@ -316,10 +349,8 @@ def create_train_val_test_datasets(
     train_ratio: float = 0.7,
     val_ratio: float = 0.15,
     test_ratio: float = 0.15,
-    random_seed: int = 42,
-    use_subset: Optional[int] = None
+    random_seed: int = 42
 ) -> Tuple[normalizedMeshH5Dataset, normalizedMeshH5Dataset, normalizedMeshH5Dataset]:
-    
     
     # Validate ratios
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "Ratios must sum to 1.0"
@@ -329,11 +360,8 @@ def create_train_val_test_datasets(
     total_len = len(base_dataset)
     
     # Optionally use subset
-    if use_subset is not None:
-        total_len = min(total_len, use_subset)
-        indices = list(range(total_len))
-    else:
-        indices = list(range(total_len))
+    
+    indices = list(range(total_len))
     
     # Calculate split sizes
     train_size = int(train_ratio * total_len)
@@ -348,40 +376,48 @@ def create_train_val_test_datasets(
     val_indices = indices[train_size:train_size + val_size]
     test_indices = indices[train_size + val_size:]
     
-    print(f"Dataset split: Train={len(train_indices)}, Val={len(val_indices)}, Test={len(test_indices)}")
+    # print(f"Dataset split: Train={len(train_indices)}, Val={len(val_indices)}, Test={len(test_indices)}")
     
     # STEP 1: Create and fit normalizer on training data only
-    train_dataset_raw = Subset(MeshH5Dataset(h5_path=h5_path), train_indices)
+    # Use a custom wrapper that only accesses training indices
+    train_dataset_raw = IndexedMeshH5Dataset(h5_path=h5_path, indices=train_indices)
     
     normalizer = FieldNormalizer(save_path=data_save_path)
     normalizer.fit(dataset=train_dataset_raw)
     normalizer.save()
     
-    # STEP 2: Create separate normalized datasets for each split
-    # We need to create a custom wrapper or modify the dataset to accept indices
-    # Here's a simple approach - create a custom class or use Subset
-    
-    # For this approach, we'll need to modify normalizedMeshH5Dataset 
-    # or create a wrapper. Here's a simplified version using Subset:
-    
-    full_normalized = normalizedMeshH5Dataset(
+    # STEP 2: Create normalized datasets with specific indices
+    train_dataset = IndexedNormalizedMeshH5Dataset(
         h5_path=h5_path,
+        indices=train_indices,
         save_path=data_save_path,
         load=True
     )
     
-    train_dataset = Subset(full_normalized, train_indices)
-    val_dataset = Subset(full_normalized, val_indices)
-    test_dataset = Subset(full_normalized, test_indices)
+    val_dataset = IndexedNormalizedMeshH5Dataset(
+        h5_path=h5_path,
+        indices=val_indices,
+        save_path=data_save_path,
+        load=True
+    )
     
-    return train_dataset, val_dataset, test_dataset, full_normalized
+    test_dataset = IndexedNormalizedMeshH5Dataset(
+        h5_path=h5_path,
+        indices=test_indices,
+        save_path=data_save_path,
+        load=True
+    )
+    
+    # Optional: also return the full dataset if needed
+    
+    
+    return train_dataset, val_dataset, test_dataset
 
+def getDataLoaders(sets: Tuple[IndexedNormalizedMeshH5Dataset, IndexedNormalizedMeshH5Dataset, IndexedNormalizedMeshH5Dataset]) -> Tuple[DataLoader, DataLoader, DataLoader]:
 
-def getDataLoaders(sets: Tuple[normalizedMeshH5Dataset, normalizedMeshH5Dataset, normalizedMeshH5Dataset]) -> Tuple[DataLoader, DataLoader, DataLoader]:
-
-    train_loader = DataLoader(sets[0], batch_size=32, shuffle=True, pin_memory=True, num_workers=4)
-    test_loader = DataLoader(sets[1], batch_size=32, shuffle=False, pin_memory=True, num_workers=4)
-    val_loader = DataLoader(sets[2], batch_size=32, shuffle=False, pin_memory=True, num_workers=4)
+    train_loader = DataLoader(sets[0], batch_size=1, shuffle=True, pin_memory=True, num_workers=4)
+    test_loader = DataLoader(sets[1], batch_size=1, shuffle=False, pin_memory=True, num_workers=4)
+    val_loader = DataLoader(sets[2], batch_size=1, shuffle=False, pin_memory=True, num_workers=4)
 
     return train_loader, test_loader, val_loader
 
@@ -405,7 +441,7 @@ def quick_inspect(h5_file_path: Union[str, Path]) -> None:
         for case_name in cases:
             print(f"📂 Case: {case_name}")
             
-            # Internal group
+            #Internal group
             if 'internal' in f[case_name]:
                 internal_grp = f[case_name]['internal']
                 print(f"  ├── internal/")
@@ -414,7 +450,7 @@ def quick_inspect(h5_file_path: Union[str, Path]) -> None:
                     dtype = internal_grp[key].dtype
                     print(f"  │     ├── {key}: {shape}, {dtype}")
             
-            # Boundary group
+            #Boundary group
             if 'boundary' in f[case_name]:
                 boundary_grp = f[case_name]['boundary']
                 print(f"  ├── boundary/")
@@ -423,7 +459,7 @@ def quick_inspect(h5_file_path: Union[str, Path]) -> None:
                     dtype = boundary_grp[key].dtype
                     print(f"  │     ├── {key}: {shape}, {dtype}")
             
-            # Coefficients group
+            #Coefficients group
             if 'constant' in f[case_name]:
                 coeff_grp = f[case_name]['constant']
                 print(f"  └── constant/")
@@ -434,4 +470,13 @@ def quick_inspect(h5_file_path: Union[str, Path]) -> None:
             print()
 
 if __name__ == "__main__":
-    quick_inspect(Path("../sample_h5.h5"))
+    # quick_inspect(Path("../sample_h5.h5"))
+
+    train_set, val_set, test_set = create_train_val_test_datasets(h5_path="../sample_h5.h5", train_ratio=1, test_ratio=0, val_ratio=0)
+
+    train_loader, val_loader, test_loader = getDataLoaders([train_set, val_set, test_set])
+
+    my_tensor = next(iter(train_loader))
+
+
+    # print(train_set.denormalize(my_tensor))
