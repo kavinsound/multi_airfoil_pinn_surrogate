@@ -211,27 +211,29 @@ def y_plus_calculator(config):
 
 if __name__ == "__main__":
     gen = SobolAirfoilGenerator(state_file="airfoil_state.json", seed=42)
+
+    from parameterGeneration import SobolAirfoilGenerator
     
     # Fire up the interactive visual inspection application
-    # visualizer = InteractiveVisualizer(gen)
-    # plt.show()
+    visualizer = InteractiveVisualizer(gen)
+    plt.show()
 
-    temp_config = gen.generate()
-    polygons = mesh_polygon(temp_config, dat_list())
+    # temp_config = gen.generate()
+    # polygons = mesh_polygon(temp_config, dat_list())
 
-    folder_path = Path("../test_config").resolve()
-    for i, polygon in enumerate(polygons):
-        coords = list(polygon.exterior.coords)
-        with open(os.path.join(folder_path, f"airfoil_{i}.dat"), "w") as f:
-            for x, y in coords:
-                f.writelines(f"{x:.6f} {y:.6f}\n")
-    layers = y_plus_calculator(temp_config)
-    with open(os.path.join(folder_path, "y_plus"), "w") as f:
-        for i, layer in enumerate(layers):
-            f.write(f"airfoil_{i+1}_firstLayer\t{layer};\n")
+    # folder_path = Path("../test_config").resolve()
+    # for i, polygon in enumerate(polygons):
+    #     coords = list(polygon.exterior.coords)
+    #     with open(os.path.join(folder_path, f"airfoil_{i}.dat"), "w") as f:
+    #         for x, y in coords:
+    #             f.writelines(f"{x:.6f} {y:.6f}\n")
+    # layers = y_plus_calculator(temp_config)
+    # with open(os.path.join(folder_path, "y_plus"), "w") as f:
+    #     for i, layer in enumerate(layers):
+    #         f.write(f"airfoil_{i+1}_firstLayer\t{layer};\n")
 
-    with open(os.path.join(folder_path, "config.json"), 'w') as f:
-        json.dump(asdict(temp_config), f, indent=4)
+    # with open(os.path.join(folder_path, "config.json"), 'w') as f:
+    #     json.dump(asdict(temp_config), f, indent=4)
 
 
 
